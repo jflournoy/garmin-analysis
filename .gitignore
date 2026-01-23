@@ -7,6 +7,9 @@
 # VSCode local history
 .history/
 
+# Claude session state
+.claude-current-status
+
 # Model outputs
 output/
 
