@@ -1,5 +1,21 @@
-# Claude Code Command Templates - Git Ignore File
-# This repository is a reference implementation, so we track MORE than typical projects
+# Garmin Health Data Analysis - Git Ignore File
+
+# Personal health data (NEVER commit)
+/data/
+*.zip
+
+# VSCode local history
+.history/
+
+# Model outputs
+output/
+
+# Stan compiled models
+*.hpp
+stan/**/*.hpp
+
+# Python virtual environment
+.venv/
 
 # Dependencies
 node_modules/
