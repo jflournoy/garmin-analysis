@@ -17,7 +17,7 @@ This project is a Bayesian analysis of Garmin health data using Stan.
    - Session continuity across conversations
    - Good for: debugging context, decision rationale, file locations
 
-**Workflow:** Start tasks with TodoWrite, add detailed notes to `.claude-current-status` as needed.
+**Workflow:** Start tasks with TodoWrite, always add detailed notes to `.claude-current-status`.
 
 ## Project Overview
 
