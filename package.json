@@ -79,6 +79,13 @@
     "search:code": "grep -r --exclude-dir=node_modules",
     "clean:artifacts": "rm -rf dist build *.log",
     "stats:project": "echo \"JS Files: $(npm run maintain:files --silent) | Commits: $(git rev-list --count HEAD 2>/dev/null || echo '0') | Branch: $(git branch --show-current)\"",
+    "// Data Analysis": "=== Garmin data analysis commands ===",
+    "plot-weight": "uv run python -m src.models.plot_weight_cli",
+    "plot-weight:stddev": "uv run python -m src.models.plot_weight_cli --show-stddev",
+    "plot-weight:multi": "uv run python -m src.models.plot_weight_cli --multiple-intervals --ci-levels 50 80 95",
+    "plot-weight:flexible": "uv run python -m src.models.plot_weight_cli --use-flexible",
+    "plot-weight:wiggly": "uv run python -m src.models.plot_weight_cli --use-flexible --alpha-prior-sd 2 --rho-prior-shape 2 --rho-prior-scale 0.5 --sigma-prior-sd 1",
+    "demo-cyclic": "uv run python -m src.models.demo_cyclic",
     "prepare": "husky"
   },
   "keywords": [
