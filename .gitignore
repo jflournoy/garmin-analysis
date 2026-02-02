@@ -16,6 +16,9 @@ output/
 # Stan compiled models
 *.hpp
 stan/**/*.hpp
+# Compiled Stan binaries (CmdStanPy output) - ignore files without .stan extension in stan/
+stan/*
+!stan/*.stan
 
 # Python virtual environment
 .venv/
@@ -84,6 +87,7 @@ desktop.ini
 *.temp
 .cache/
 tmp/
+temp/
 temp/
 
 # Logs (except session-history which we intentionally track)
