@@ -1,0 +1,7 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(/home/jflournoy/.cmdstan/cmdstan-2.36.0/bin/stanc:*)"
+    ]
+  }
+}

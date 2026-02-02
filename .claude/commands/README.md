@@ -19,6 +19,8 @@ Commands are organized by frequency of use and purpose:
 - `session-history` - Session preservation
 - `tdd` - Test-driven development
 - `todo` - Task management
+- `condense` - Condense .claude-current-status by archiving old content
+- `continue` - Efficiently resume work by extracting recent session
 
 ## Usage
 

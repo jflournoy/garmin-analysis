@@ -19,6 +19,13 @@ This project is a Bayesian analysis of Garmin health data using Stan.
 
 **Workflow:** Start tasks with TodoWrite, always add detailed notes to `.claude-current-status`. When you add notes, re-assess and clean up old notes.
 
+**Status Management Commands:**
+- `/continue` - Efficiently resume work by extracting recent session context
+- `/condense [N]` - Archive old content, keep last N lines (default: 200)
+- `scripts/status-helper.sh` - Auto-cleanup helper for updates
+
+**Auto-Cleanup Pattern:** When updating `.claude-current-status`, check if file exceeds 300 lines and consider running `/condense`.
+
 ## Project Overview
 
 **Goal**: Build a personal health analytics system with:
