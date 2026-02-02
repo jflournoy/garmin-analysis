@@ -1,0 +1,65 @@
+# Claude Current Status - Condensed
+
+## Workout Report Update (2026-01-31)
+- Updated `docs/workout_data_report.md` with user insight on metric reliability
+- Updated `src/analysis/workout_report.py` output recommendations
+- **Primary recommendation**: `calories` as most reliable magnitude metric
+- **Rationale**: Consistently recorded, estimates energy expenditure; reps/sets have counting errors; volume often zero
+- Updated tables, recommendations, and modeling guidance throughout documentation
+
+## Archive Note
+- **Condensed on**: Sat Jan 31 10:28:02 PM PST 2026
+- **Original size**: 412 lines
+- **Archived**: 212 lines to .claude-archive/status-archive-2026-01-31_22-28-02.txt
+- **Kept**: 200 lines (recent work)
+- **Previous archive**: Lines 1-212
+
+## Recent Work (Last 200 lines)
+========================================
+
+  - Weekly Fourier spline for day-of-week effects (weekly model)
+  - Student-t observation noise for robustness
+- **Explicit prior specifications** for all parameters
+- **Parameter interpretations** for each model component
+
+### 3. Comprehensive Parameter Tables
+- **Primary Parameters of Interest**: sigma, daily/weekly amplitudes, variance proportions
+- **Model Hyperparameters**: alpha_trend, rho_trend, nu, trend_change, Fourier coefficient scales
+- **Incidental Parameters**: Raw Fourier coefficients (a_sin_raw, a_cos_raw, b_sin_raw, b_cos_raw), eta_trend, eta_inducing
+- **Transformed Parameters**: Scaled Fourier coefficients (a_sin, a_cos, b_sin, b_cos)
+
+### 4. Updated Report Structure
+1. Data Summary
+2. **Model Specification** (new)
+3. **Parameter Estimates** (enhanced with full tables)
+4. Diagnostic Summary
+5. Visualizations
+6. Interpretation
+7. Reproduction
+8. Technical Details
+
+### 5. Enhanced Comparison Report
+- Added **Hyperparameter Comparison** table comparing trend GP parameters, Student-t degrees of freedom, Fourier coefficient scales
+- Updated section numbering and content
+- Fixed prediction comparison reference to match actual generated plots
+
+### 6. Code Updates
+- `extract_all_parameters()`: New function for comprehensive parameter extraction
+- `write_model_report()`: Updated with enhanced model specification and parameter tables
+- `write_comparison_report()`: Updated with hyperparameter comparison
+- `run_daily_model()` and `run_weekly_model()`: Added `all_params` to return dictionaries
+- Fixed plot references in comparison report
+
+## Testing:
+- ✅ Parameter extraction function handles empty data gracefully
+- ✅ All expected parameter keys present in results
+- ✅ Code imports successfully with dependencies
+- ✅ Function returns structured dictionary with parameter summaries
+
+## Files Modified:
+- `src/models/demo_general.py`: Major refactoring with all enhancements
+- `output/demo_general/comparison/comparison_report.md`: Fixed plot references
+
+## Next Steps:
+1. Run actual model fitting to verify enhanced reports generate correctly
+2. Consider adding parameter trace plots for diagnostics

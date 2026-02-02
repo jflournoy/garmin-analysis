@@ -1,0 +1,212 @@
+# Claude Status - 2026-01-31
+
+## New Work: Workout Data Report and Enhanced Lag Methods
+
+**Progress (2026-01-31)**:
+- Created comprehensive workout data report in `docs/workout_data_report.md`
+- Implemented two new lag analysis methods:
+  1. **Estimated lag model**: Lag parameter estimated from data (Stan: `weight_gp_crosslagged_estimated.stan`)
+  2. **Cumulative lag model**: Average effect over multiple lag periods (Stan: `weight_gp_crosslagged_cumulative.stan`)
+- Added Python support functions in `src/data/align.py` and `src/models/fit_weight.py`
+
+**Workout Data Report**:
+- Documents all data fields from Garmin workout exports
+- Data quality assessment (volume data issues, missing values)
+- Aggregation options and recommendations for modeling
+- Integration with cross-lagged GP models
+- Available at `docs/workout_data_report.md`
+
+**Estimated Lag Model**:
+- Stan model: `stan/weight_gp_crosslagged_estimated.stan`
+- `lag_days` parameter with exponential(1/3) prior (mean 3 days)
+- Requires `t_max` data (maximum days in dataset)
+- Python function: `fit_crosslagged_model_estimated()`
+- Data preparation: `prepare_crosslagged_stan_data_estimated()`
+
+**Cumulative Lag Model**:
+- Stan model: `stan/weight_gp_crosslagged_cumulative.stan`
+- Multiple fixed lags (default: [1, 2, 3] days)
+- Average effect across valid lags within observation window
+- Python function: `fit_crosslagged_model_cumulative()`
+- Data preparation: `prepare_crosslagged_stan_data_cumulative()`
+
+**Next Steps**:
+1. Test new models with actual weight and workout data
+2. Compare model performance (WAIC/LOO) against fixed-lag models
+3. Consider distributed lag models with smoothness priors
+4. Integrate into cross-lagged comparison workflow
+
+## Continuation: Extending bivariate GP for mismatched observation times
+
+**Progress (2026-01-31)**:
+- Examining current bivariate Stan model structure
+- Designing extension to handle mismatched observation times
+- Implemented modified Stan model (weight_gp_bivariate_mismatched.stan) and data preparation function (prepare_bivariate_stan_data_mismatched)
+- Added fitting function fit_bivariate_model_mismatched
+- Test with weight-VO2 max data (sparse vs frequent measurements)
+
+**Design**:
+- Extend data block with separate N_weight, N_other, t_weight, t_other
+- Keep shared kernel parameters (alpha, rho) and coregionalization matrix B
+- Compute separate K_fu_weight (N_weight x M) and K_fu_other (N_other x M)
+- Latent functions: f_weight = K_fu_weight * a[,1], f_other = K_fu_other * a[,2]
+- Likelihood separate for each output
+- Update data preparation function to align to global time but keep separate observation arrays
+- Test with weight (frequent) and VO2 max (sparse)
+
+**Test Results (2026-01-31)**:
+- Model compiles and runs with minimal iterations (chains=1, warmup=5, sampling=5)
+- Latent correlation posterior mean: 0.160 (positive, similar to empirical 0.336)
+- Divergent transitions (80%) due to insufficient warmup/iterations; need proper MCMC
+- ArviZ integration successful after fixing log_likelihood mapping
+- Data preparation function works correctly
+
+## Current Task: Latent time-series correlation modeling
+
+**Goal**: Extend current weight GP model to include correlations with other Garmin time-series variables (daily activity, sleep, heart rate, etc.).
+
+**Exploration Findings**:
+- Data directory contains multiple time-series variables in DI_CONNECT subdirectories
+- Most promising: UDS (User Daily Summary) files with daily aggregated metrics (steps, calories, heart rate, stress)
+- Sleep data files with sleep stage durations and respiration
+- Activity summaries with workout details
+- Need to create data loading modules similar to weight.py
+
+**Progress (2026-01-30)**:
+1. Created `src/data/activity.py` with `load_daily_metrics()` - loads 922 daily records from UDS files
+2. Created `src/data/align.py` with functions to merge weight data with daily metrics
+3. Created `src/data/sleep.py` for sleep metrics
+4. Created `src/analysis/explore_correlations.py` to generate visualizations
+5. Generated correlation matrix, scatter plots, time series plots in output/correlations/
+6. Designed and implemented bivariate GP model with separable kernel (`stan/weight_gp_bivariate.stan`)
+7. Created fitting function `fit_bivariate_model` in `src/models/fit_weight.py`
+8. Ran evaluation with weight + resting heart rate (2 chains, 100+100 iterations)
+
+**Correlation Findings**:
+- Total steps: positive correlation 0.29 with weight (more steps → higher weight?)
+- Resting heart rate: negative correlation -0.20 (lower RHR → higher weight?)
+- Stress duration: negative correlation -0.20
+- Max heart rate: negative correlation -0.14
+- Weight variability (daily std): positive correlation 0.14
+- Other metrics (active calories, stress level) weaker correlations
+- Note: correlations modest; need to account for time trends
+
+**Bivariate Model Results**:
+- Model: separable kernel GP with coregionalization matrix, Student-t likelihood, sparse GP approximation
+- Latent correlation posterior mean: -0.190 (similar to empirical -0.205)
+- 95% CI: [-0.640, 0.336] (wide, includes zero)
+- R-hat slightly high due to low iterations but acceptable for exploration
+- Model successfully captures correlation direction; more data needed for precise estimate
+
+**VO2 Max Analysis (2026-01-30)**:
+- Created `src/data/vo2max.py` data loader
+- 133 VO2 max records (mean interval 6.9 days, range 1-59 days)
+- VO2 max values: mean 49.1, SD 0.83, range 47-50 mL/kg/min
+- Only 26 days with both weight and VO2 max measurements
+- Empirical correlation: weight_mean vs VO2 max = +0.336 (positive)
+
+**Model Considerations (User Feedback)**:
+- Current bivariate GP assumes same observation times (daily aggregated)
+- Weight measurements more frequent than other variables (VO2 max weekly, daily metrics daily)
+- Need to correlate latent curves, not just aligned observations
+- Two approaches:
+  1. Extend separable kernel GP to handle mismatched observation times
+  2. Fit independent GPs and compute correlation between posterior functions
+
+**Next Steps**:
+1. Implement independent GP correlation approach for exploration
+2. Extend bivariate GP model for mismatched times if needed
+3. Analyze weight-VO2 max relationship with proper uncertainty
+4. Compare model approaches (computational cost, accuracy)
+5. Explore other variable pairs with better temporal alignment (daily metrics)
+
+## Today's Changes: Sparse GP default and weekly harmonics
+
+### Sparse GP default
+- Changed default `use_sparse: bool = True` in `src/data/weight.py`
+- Updated all optimized model fitting functions in `src/models/fit_weight.py`:
+  - `fit_weight_model_spline_optimized`
+  - `fit_weight_model_optimized`
+  - `fit_weight_model_cyclic_optimized`
+  - `fit_weight_model_flexible_optimized`
+  - `fit_weight_model_spline_weekly`
+- Updated CLI argument from `--use-sparse` to `--no-sparse` in demo scripts:
+  - `demo_general.py`
+  - `demo_weekly_spline.py`
+  - `demo_spline_single.py`
+  - `demo_cyclic_single.py`
+  - `demo_optimized_cyclic_spline.py`
+- Added `use_sparse = not args.no_sparse` after parse_args in each script
+
+### Weekly harmonics default
+- Changed default `weekly_harmonics: int = 2` in `src/data/weight.py`
+- Updated `fit_weight_model_spline_weekly` default
+- Updated CLI default `--weekly-harmonics` from 1 to 2 in `demo_general.py` and `demo_weekly_spline.py`
+
+## Current Task: Refactoring demo_general.py for enhanced model specification reporting
+
+### Analysis Complete:
+
+**Current Structure Issues:**
+1. `write_model_report()` only reports a few key parameters (sigma, daily_amplitude, prop_variance_daily)
+2. Missing reporting of many model parameters:
+   - Trend GP parameters: `alpha_trend`, `rho_trend`
+   - Fourier coefficient scales: `sigma_fourier` (daily), `sigma_fourier_daily`, `sigma_fourier_weekly` (weekly)
+   - Student-t degrees of freedom: `nu`
+   - Derived parameters: `trend_change`
+   - Raw Fourier coefficients (summary statistics)
+3. No explicit model specification section detailing all model components
+4. No reporting of incidental parameters (raw coefficients, eta parameters)
+
+**Stan Model Parameters Identified:**
+
+**Daily Model (`weight_gp_spline_optimized.stan`):**
+- **Primary parameters**: `alpha_trend`, `rho_trend`, `sigma_fourier`, `sigma`, `nu`
+- **Raw parameters**: `a_sin_raw`, `a_cos_raw`, `eta_trend`, `eta_inducing`
+- **Derived parameters**: `daily_amplitude`, `prop_variance_daily`, `trend_change`
+
+**Weekly Model (`weight_gp_spline_weekly.stan`):**
+- **Primary parameters**: `alpha_trend`, `rho_trend`, `sigma_fourier_daily`, `sigma_fourier_weekly`, `sigma`, `nu`
+- **Raw parameters**: `a_sin_raw`, `a_cos_raw`, `b_sin_raw`, `b_cos_raw`, `eta_trend`, `eta_inducing`
+- **Derived parameters**: `daily_amplitude`, `weekly_amplitude`, `prop_variance_daily`, `prop_variance_weekly`, `trend_change`
+
+## Design Plan
+
+### 1. Enhanced Parameter Extraction Function
+Create `extract_all_parameters()` function that:
+- Extracts all primary, raw, and derived parameters
+- Computes summary statistics (mean, SD, 2.5%, 50%, 97.5% quantiles)
+- Handles both daily and weekly models
+- Returns structured dictionary
+
+### 2. Enhanced Model Specification Section
+Add explicit model specification to reports:
+- List all model components (trend GP, daily Fourier spline, weekly Fourier spline)
+- Specify priors for each parameter
+- Document parameter interpretations
+
+### 3. Comprehensive Parameter Tables
+Create tables for:
+- **Primary parameters of interest** (with interpretations)
+- **Incidental parameters** (raw coefficients, summary statistics)
+- **Derived quantities** (amplitudes, variance proportions, trend change)
+
+### 4. Updated Report Structure
+1. Data Summary (existing)
+2. **Model Specification** (new)
+3. **Parameter Estimates** (enhanced)
+4. Diagnostic Summary (existing)
+5. Visualizations (existing)
+6. Interpretation (enhanced with parameter context)
+
+## Refactoring Complete - Summary of Changes:
+
+### 1. Enhanced Parameter Extraction (`extract_all_parameters()`)
+- Extracts all primary, raw, and derived parameters from Stan models
+- Computes summary statistics (mean, SD, 2.5%, 50%, 97.5% quantiles)
+- Handles both daily and weekly models
+- Returns structured dictionary with parameter summaries
+
+### 2. Enhanced Model Specification in Reports
+- **New Model Specification section** detailing all model components:
+  - Long-term trend GP with squared exponential kernel
