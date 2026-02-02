@@ -1,15 +1,20 @@
 /*
- * Gaussian Process model for weight over time
+ * Gaussian Process model for weight over time with flexible priors
  *
- * This is a proof-of-concept Bayesian model for analyzing
- * weight trends from Garmin data. Uses a squared exponential
- * kernel to capture smooth temporal trends.
+ * This version allows customization of prior hyperparameters via data input.
+ * Uses a squared exponential kernel to capture smooth temporal trends.
  */
 
 data {
   int<lower=1> N;          // Number of observations
   array[N] real t;         // Time points (scaled to [0,1])
   vector[N] y;             // Weight observations (standardized)
+
+  // Hyperparameters for priors
+  real<lower=0> alpha_prior_sd;      // Standard deviation for alpha ~ normal(0, sd)
+  real<lower=0> rho_prior_shape;     // Shape parameter for rho ~ inv_gamma(shape, scale)
+  real<lower=0> rho_prior_scale;     // Scale parameter for rho ~ inv_gamma(shape, scale)
+  real<lower=0> sigma_prior_sd;      // Standard deviation for sigma ~ normal(0, sd)
 }
 
 parameters {
@@ -41,11 +46,11 @@ transformed parameters {
 }
 
 model {
-  // Priors
-  alpha ~ normal(0, 1);          // GP amplitude
-  rho ~ inv_gamma(5, 1);         // Length scale (fairly smooth)
-  sigma ~ normal(0, 0.5);        // Observation noise
-  eta ~ std_normal();            // Non-centered parameterization
+  // Priors with flexible hyperparameters
+  alpha ~ normal(0, alpha_prior_sd);          // GP amplitude
+  rho ~ inv_gamma(rho_prior_shape, rho_prior_scale);  // Length scale
+  sigma ~ normal(0, sigma_prior_sd);          // Observation noise
+  eta ~ std_normal();                         // Non-centered parameterization
 
   // Likelihood
   y ~ normal(f, sigma);
@@ -55,6 +60,8 @@ generated quantities {
   vector[N] y_rep;               // Posterior predictive
   vector[N] log_lik;             // Pointwise log likelihood for WAIC/LOO
   real<lower=0> trend_change;    // Total change in trend over time period
+  real<lower=0> avg_uncertainty; // Average posterior standard deviation
+  vector[N] f_std;               // Standard deviation of f at each time point
 
   for (n in 1:N) {
     y_rep[n] = normal_rng(f[n], sigma);
@@ -63,4 +70,12 @@ generated quantities {
 
   // Compute trend change from first to last observation
   trend_change = abs(f[N] - f[1]);
+
+  // Compute average uncertainty (for monitoring)
+  // Note: This is a placeholder - actual standard deviation would need
+  // to be computed from posterior samples outside Stan
+  avg_uncertainty = sigma;
+
+  // Placeholder for f_std (would need to be computed from posterior)
+  f_std = rep_vector(sigma, N);
 }
