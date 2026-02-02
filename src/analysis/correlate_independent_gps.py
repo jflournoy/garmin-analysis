@@ -5,7 +5,7 @@ import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 
-sys.path.insert(0, str(Path(__file__).parent.parent))
+sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
 from src.data import load_weight_data, load_vo2max_data
 from src.models.fit_weight import fit_gp_simple
@@ -64,13 +64,26 @@ def sample_latent_functions_on_grid(
         where each samples matrix is n_samples x len(t_grid_days)
         t_grid_days is absolute days (since global time zero).
     """
-    # Check if f_pred exists in posterior_predictive (not posterior)
-    if "f_pred" not in idata_weight.posterior_predictive or "f_pred" not in idata_other.posterior_predictive:
-        raise ValueError("Both GPs must have prediction grid (f_pred) in posterior_predictive")
+    # Check if f_pred exists in posterior_predictive or posterior
+    f_pred_weight = None
+    f_pred_other = None
+
+    if "f_pred" in idata_weight.posterior_predictive:
+        f_pred_weight = idata_weight.posterior_predictive["f_pred"]
+    elif "f_pred" in idata_weight.posterior:
+        f_pred_weight = idata_weight.posterior["f_pred"]
+
+    if "f_pred" in idata_other.posterior_predictive:
+        f_pred_other = idata_other.posterior_predictive["f_pred"]
+    elif "f_pred" in idata_other.posterior:
+        f_pred_other = idata_other.posterior["f_pred"]
+
+    if f_pred_weight is None or f_pred_other is None:
+        raise ValueError("Both GPs must have prediction grid (f_pred) in posterior or posterior_predictive")
 
     # Extract f_pred samples
-    f_weight_pred = idata_weight.posterior_predictive["f_pred"].values  # shape (chain, draw, N_pred)
-    f_other_pred = idata_other.posterior_predictive["f_pred"].values
+    f_weight_pred = f_pred_weight.values  # shape (chain, draw, N_pred)
+    f_other_pred = f_pred_other.values
 
     # Ensure prediction grids are the same length (should be if same t_pred used)
     if f_weight_pred.shape[-1] != f_other_pred.shape[-1]:
@@ -164,6 +177,10 @@ def analyze_weight_vo2max():
         df_weight_daily, "timestamp", df_vo2max, "date"
     )
     print(f"   Global time range: {global_t_min.date()} to {global_t_max.date()} ({global_t_max - global_t_min} days)")
+
+    # Create timestamp_global column for fit_gp_simple (which expects datetime)
+    df_weight_aligned["timestamp_global"] = global_t_min + pd.to_timedelta(df_weight_aligned["days_since_global"], unit='D')
+    df_vo2_aligned["timestamp_global"] = global_t_min + pd.to_timedelta(df_vo2_aligned["days_since_global"], unit='D')
 
     # Create common prediction grid (daily)
     t_pred_days = np.arange(0, (global_t_max - global_t_min).days + 1, 1)

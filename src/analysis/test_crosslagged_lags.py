@@ -6,7 +6,7 @@ import numpy as np
 import arviz as az
 import matplotlib.pyplot as plt
 
-sys.path.insert(0, str(Path(__file__).parent.parent))
+sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
 from src.data import load_weight_data
 from src.data.workout import load_workout_data, prepare_workout_aggregates
@@ -108,8 +108,8 @@ def test_crosslagged_lags():
                     'beta_orig_ci_high': beta_orig_ci_high,
                     'waic': waic_value,
                     'loo': loo_value,
-                    'n_eff_beta': az.ess(beta_samples).item() if hasattr(az, 'ess') else np.nan,
-                    'rhat_beta': az.rhat(posterior['beta']).values.item() if 'beta' in posterior else np.nan,
+                    'n_eff_beta': float(az.ess(beta_samples)) if hasattr(az, 'ess') else np.nan,
+                    'rhat_beta': float(az.rhat(posterior['beta']).values) if 'beta' in posterior else np.nan,
                 }
                 results.append(result)
 
@@ -260,6 +260,6 @@ if __name__ == "__main__":
     if quick_test():
         print("\nQuick test passed! Running full lag comparison...")
         # Uncomment for full analysis
-        # test_crosslagged_lags()
+        test_crosslagged_lags()
     else:
         print("\nQuick test failed. Check model compilation and data preparation.")
