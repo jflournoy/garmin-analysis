@@ -347,7 +347,7 @@ wheels = [
 [[package]]
 name = "garmin-analysis-v2"
 version = "0.1.0"
-source = { virtual = "." }
+source = { editable = "." }
 dependencies = [
     { name = "arviz" },
     { name = "cmdstanpy" },

@@ -4,8 +4,8 @@
  * Impulse state evolves daily:
  *   impulse[t] = psi·impulse[t-1] + intensity[t]  (impulse accumulates and decays)
  *
- * Fitness state evolves daily:
- *   fitness[t] = alpha·fitness[t-1] + beta·impulse[t-1] + ε_f[t], ε_f[t] ~ N(0, σ_f)
+ * Fitness state evolves daily (deterministic function of impulse):
+ *   fitness[t] = alpha·fitness[t-1] + beta·impulse[t-1]
  *
  * Weight depends on fitness and intrinsic dynamics:
  *   weight[t] = baseline + gamma·fitness[day(t)] + GP(t) + ε_w[t], ε_w[t] ~ N(0, σ_w)
@@ -65,16 +65,12 @@ parameters {
   real beta;                          // fitness gain per unit impulse
   real gamma;                         // weight effect per unit fitness
 
-  // Process and observation noise
-  real<lower=0.01> sigma_f;           // fitness process noise
+  // Observation noise
   real<lower=0.01> sigma_w;           // weight observation noise
 
   // GP parameters for intrinsic weight dynamics
   real<lower=0.01, upper=5> alpha_gp; // GP marginal std
   real<lower=0.01, upper=5> rho_gp;   // GP length scale
-
-  // Non-centered parameterization for fitness states
-  vector[D] fitness_raw;              // standard normal for fitness innovations
 
   // Non-centered parameterization for inducing points
   vector[M] eta_inducing_raw;         // standard normal for inducing points
@@ -99,10 +95,10 @@ transformed parameters {
     impulse[t] = psi * impulse[t-1] + intensity[t];
   }
 
-  // Compute fitness states (start at 0, non-centered parameterization)
-  fitness[1] = fitness_raw[1] * sigma_f;  // Start from innovation
+  // Compute fitness states (deterministic function of impulse)
+  fitness[1] = 0;  // Start at baseline fitness
   for (t in 2:D) {
-    fitness[t] = alpha * fitness[t-1] + beta * impulse[t-1] + fitness_raw[t] * sigma_f;
+    fitness[t] = alpha * fitness[t-1] + beta * impulse[t-1];
   }
 
   // GP covariance at inducing points
@@ -133,8 +129,7 @@ model {
   // gamma: weight effect per fitness, should be negative (fitness reduces weight)
   gamma ~ normal(-0.5, 0.2);          // negative, stronger prior based on physiology
 
-  // Noise priors - keep weakly informative
-  sigma_f ~ exponential(1);           // weakly informative, mean=1, mode=0
+  // Observation noise prior
   sigma_w ~ exponential(1);           // weakly informative, mean=1, mode=0
 
   // GP priors - strongly constrain to prevent capturing fitness signal
@@ -144,7 +139,6 @@ model {
   rho_gp ~ inv_gamma(8, 1);         // favors longer length scales (mean=0.143, mode=0.111)
 
   // Priors for non-centered parameters
-  fitness_raw ~ std_normal();
   eta_inducing_raw ~ std_normal();
 
   // Likelihood for weight observations

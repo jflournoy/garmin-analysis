@@ -3551,7 +3551,7 @@ def fit_state_space_model(
     chains: int = 4,
     iter_warmup: int = 500,
     iter_sampling: int = 500,
-    adapt_delta: float = 0.95,
+    adapt_delta: float = 0.99,
     max_treedepth: int = 12,
     activity_types: list[str] = None,
     max_hr: float = 185.0,
@@ -3660,11 +3660,9 @@ def fit_state_space_model(
             'alpha': 0.5,        # beta(2,2) prior mean (also mode)
             'beta': 0.0,         # normal(0,1) prior mean and mode
             'gamma': 0.0,        # normal(0,1) prior mean and mode
-            'sigma_f': 0.5,      # exponential(1) prior mean = 1, but start smaller for stability
             'sigma_w': 0.5,      # exponential(1) prior mean = 1, but start smaller for stability
             'alpha_gp': 0.5,     # normal(0,1) truncated [0.01,5] - start at reasonable value
             'rho_gp': 0.25,      # inv_gamma(3,0.5) prior mean = 0.25 (more stable than mode at 0.125)
-            'fitness_raw': np.zeros(stan_data['D']),
             'eta_inducing_raw': np.zeros(stan_data['M']) if stan_data['M'] > 0 else np.array([]),
         }
         return init
@@ -3766,7 +3764,7 @@ def fit_state_space_model_impulse(
     chains: int = 4,
     iter_warmup: int = 500,
     iter_sampling: int = 500,
-    adapt_delta: float = 0.95,
+    adapt_delta: float = 0.99,
     max_treedepth: int = 12,
     activity_types: list[str] = None,
     max_hr: float = 185.0,
@@ -3880,11 +3878,9 @@ def fit_state_space_model_impulse(
             'psi': 0.7,          # beta(5,2) prior mode ~0.7
             'beta': 0.3,         # normal(0.3,0.2) prior mean
             'gamma': -0.5,       # normal(-0.5,0.2) prior mean
-            'sigma_f': 0.5,      # exponential(1) prior mean = 1, but start smaller for stability
             'sigma_w': 0.5,      # exponential(1) prior mean = 1, but start smaller for stability
             'alpha_gp': 0.5,     # exponential(5) prior mean = 0.2, but start at reasonable value
             'rho_gp': 0.25,      # inv_gamma(8,1) prior mean = 0.143, start at reasonable value
-            'fitness_raw': np.zeros(stan_data['D']),
             'eta_inducing_raw': np.zeros(stan_data['M']) if stan_data['M'] > 0 else np.array([]),
         }
         return init
@@ -3963,6 +3959,261 @@ def fit_state_space_model_impulse(
         f_gp_data = fit.stan_variable('f_gp_stored')  # shape (chain, draw, obs_weight)
         idata.posterior['f_gp_stored'] = xr.DataArray(
             f_gp_data,
+            dims=("chain", "draw", "obs_weight"),
+            coords={
+                "chain": idata.posterior.coords["chain"],
+                "draw": idata.posterior.coords["draw"],
+                "obs_weight": idata.posterior.coords["obs_weight"]
+            }
+        )
+
+    # Convert parameters to original units for interpretation
+    # gamma_original = gamma_scaled * (weight_std / intensity_std)
+    if 'weight_std' in stan_data and 'intensity_std' in stan_data:
+        weight_std = stan_data['weight_std']
+        intensity_std = stan_data['intensity_std']
+        if intensity_std > 0:
+            gamma_scaled = idata.posterior['gamma'] * (weight_std / intensity_std)
+            idata.posterior['gamma_original_units'] = gamma_scaled
+
+    # Save to cache if caching is enabled (skipped for now)
+    if cache_dir is not None:
+        pass  # Cache saving skipped (TODO: implement)
+
+    return fit, idata, df_weight, df_intensity, stan_data
+
+
+def fit_state_space_model_impulse_spline(
+    data_dir: Path | str = "data",
+    df_weight: pd.DataFrame = None,
+    df_intensity: pd.DataFrame = None,
+    stan_file: Path | str = "stan/weight_state_space_impulse_spline.stan",
+    output_dir: Path | str = "output",
+    chains: int = 4,
+    iter_warmup: int = 1000,
+    iter_sampling: int = 2000,
+    adapt_delta: float = 0.99,
+    max_treedepth: int = 12,
+    activity_types: list[str] = None,
+    max_hr: float = 185.0,
+    intensity_col: str = "intensity",
+    use_sparse: bool = True,
+    n_inducing_points: int = 50,
+    inducing_point_method: str = "uniform",
+    cache: bool = True,
+    force_refit: bool = False,
+    include_prediction_grid: bool = False,
+    prediction_step_days: int = 1,
+    fourier_harmonics: int = 2,
+    prediction_hour: float = 8.0,
+) -> tuple:
+    """Fit state-space model with impulse-response fitness and daily spline.
+
+    Same as fit_state_space_model_impulse but includes daily Fourier spline
+    for hour-of-day effects.
+
+    Args:
+        data_dir: Path to data directory (used only if df_weight or df_intensity not provided).
+        df_weight: Optional DataFrame with weight observations.
+                   If None, weight data is loaded from data_dir.
+        df_intensity: Optional DataFrame with daily intensity values.
+                      If None, intensity data is loaded from data_dir.
+        stan_file: Path to impulse-response state-space Stan model file with spline.
+        output_dir: Directory for output files.
+        chains: Number of MCMC chains.
+        iter_warmup: Warmup iterations per chain.
+        iter_sampling: Sampling iterations per chain.
+        adapt_delta: Target acceptance probability for NUTS (default: 0.95).
+        max_treedepth: Maximum tree depth for NUTS (default: 12).
+        activity_types: List of activity types to include for intensity calculation.
+                       If None, includes ['strength_training', 'walking', 'cycling'].
+        max_hr: Estimated maximum heart rate for intensity calculation.
+        intensity_col: Name for intensity column.
+        use_sparse: Whether to use sparse GP approximation.
+        n_inducing_points: Number of inducing points for sparse GP.
+        inducing_point_method: Method for selecting inducing points.
+        cache: Whether to cache model results.
+        force_refit: Force re-fitting even if cached results exist.
+        include_prediction_grid: Whether to include prediction grid.
+        prediction_step_days: Step size in days for prediction grid.
+        fourier_harmonics: Number of Fourier harmonics for daily spline.
+        prediction_hour: Hour of day (0-24) for prediction points.
+
+    Returns:
+        Tuple of (fit, idata, df_weight, df_intensity, stan_data) where:
+        - fit: CmdStanPy fit object
+        - idata: ArviZ InferenceData object
+        - df_weight: Weight DataFrame used
+        - df_intensity: Intensity DataFrame used
+        - stan_data: Stan data dictionary
+    """
+    output_dir = Path(output_dir)
+    output_dir.mkdir(exist_ok=True)
+
+    # Cache setup (simplified - skip for now like other models)
+    cache_dir = None
+    if cache:
+        # For simplicity, skip cache for now (TODO: extend _compute_cache_key)
+        pass
+
+    # Load or use provided weight data
+    if df_weight is None:
+        print("Loading weight data...")
+        df_weight = load_weight_data(data_dir)
+    else:
+        print("Using provided weight DataFrame")
+        df_weight = df_weight.copy()
+
+    # Load or use provided intensity data
+    if df_intensity is None:
+        print("Loading workout intensity data...")
+        from src.data.intensity import load_intensity_data
+        df_intensity = load_intensity_data(
+            data_dir=data_dir,
+            activity_types=activity_types,
+            max_hr=max_hr,
+            intensity_col=intensity_col,
+        )
+    else:
+        print("Using provided intensity DataFrame")
+        df_intensity = df_intensity.copy()
+
+    # Prepare state-space Stan data with spline
+    print("Preparing state-space Stan data with daily spline...")
+    from src.data.intensity import prepare_state_space_data_with_spline
+    stan_data = prepare_state_space_data_with_spline(
+        df_weight=df_weight,
+        df_intensity=df_intensity,
+        use_sparse=use_sparse,
+        n_inducing_points=n_inducing_points,
+        fourier_harmonics=fourier_harmonics,
+        include_prediction_grid=include_prediction_grid,
+        prediction_hour=prediction_hour,
+        prediction_step_days=prediction_step_days,
+    )
+
+    # Verify required fields
+    required_fields = [
+        'D', 'intensity', 'N_weight', 't_weight', 'y_weight', 'day_idx',
+        'hour_of_day', 'K', 'use_sparse', 'M', 't_inducing'
+    ]
+    for field in required_fields:
+        if field not in stan_data:
+            raise ValueError(f"State-space model with spline requires {field} in stan_data.")
+
+    # Compile model
+    print("Compiling state-space Stan model with spline...")
+    model = CmdStanModel(stan_file=stan_file)
+
+    print("Fitting state-space model with spline...")
+    # Generate initial values at prior centers (updated to match stronger priors)
+    def generate_init():
+        K = stan_data.get('K', 2)
+        init = {
+            'alpha': 0.8,        # beta(8,2) prior mean = 0.8
+            'psi': 0.714,        # beta(5,2) prior mean = 0.714
+            'beta': 0.3,         # normal(0.3,0.2) prior mean = 0.3
+            'gamma': -0.5,       # normal(-0.5,0.2) prior mean = -0.5
+            'sigma_w': 1.0,      # exponential(1) prior mean = 1
+            'alpha_gp': 0.2,     # exponential(5) prior mean = 0.2
+            'rho_gp': 0.143,     # inv_gamma(8,1) prior mean = 0.143
+            'sigma_fourier': 1.0, # exponential(1) prior mean = 1
+            'a_sin_raw': np.zeros(K),
+            'a_cos_raw': np.zeros(K),
+            'eta_inducing_raw': np.zeros(stan_data['M']) if stan_data['M'] > 0 else np.array([]),
+        }
+        return init
+
+    # Filter out internal keys starting with underscore
+    filtered_data = {k: v for k, v in stan_data.items() if not k.startswith("_")}
+
+    fit = model.sample(
+        data=filtered_data,
+        chains=chains,
+        iter_warmup=iter_warmup,
+        iter_sampling=iter_sampling,
+        adapt_delta=adapt_delta,
+        max_treedepth=max_treedepth,
+        output_dir=str(output_dir),
+        show_progress=True,
+        inits=generate_init(),
+    )
+
+    # Convert to ArviZ
+    print("Creating ArviZ InferenceData...")
+    N_pred = stan_data.get("N_pred", 0)
+    coords = {
+        "obs_weight": np.arange(stan_data["N_weight"]),
+        "day": np.arange(stan_data["D"]),
+        "fourier_harmonic": np.arange(stan_data["K"]),
+    }
+    dims = {
+        "fitness": ["day"],
+        "f_gp": ["obs_weight"],
+        "f_daily": ["obs_weight"],
+        "y_weight": ["obs_weight"],
+        "y_weight_rep": ["obs_weight"],
+        "log_lik_weight": ["obs_weight"],
+        "impulse": ["day"],
+        "a_sin": ["fourier_harmonic"],
+        "a_cos": ["fourier_harmonic"],
+    }
+    if N_pred > 0:
+        coords["pred"] = np.arange(N_pred)
+        dims.update({
+            "f_pred": ["pred", "component"],  # component: fitness_effect, gp_component, daily_component
+            "y_pred": ["pred", "component"],
+        })
+
+    # Extract posterior variables
+    idata = az.from_cmdstanpy(
+        posterior=fit,
+        posterior_predictive=["y_weight_rep"],
+        observed_data={"y_weight": stan_data["y_weight"]},
+        coords=coords,
+        dims=dims,
+        log_likelihood="log_lik_weight",
+    )
+
+    # Add fitness, impulse, and daily component to InferenceData
+    import xarray as xr
+    if 'fitness_stored' in fit.stan_variables() and 'fitness_stored' not in idata.posterior:
+        fitness_data = fit.stan_variable('fitness_stored')  # shape (chain, draw, day)
+        idata.posterior['fitness_stored'] = xr.DataArray(
+            fitness_data,
+            dims=("chain", "draw", "day"),
+            coords={
+                "chain": idata.posterior.coords["chain"],
+                "draw": idata.posterior.coords["draw"],
+                "day": idata.posterior.coords["day"]
+            }
+        )
+    if 'impulse_stored' in fit.stan_variables() and 'impulse_stored' not in idata.posterior:
+        impulse_data = fit.stan_variable('impulse_stored')  # shape (chain, draw, day)
+        idata.posterior['impulse_stored'] = xr.DataArray(
+            impulse_data,
+            dims=("chain", "draw", "day"),
+            coords={
+                "chain": idata.posterior.coords["chain"],
+                "draw": idata.posterior.coords["draw"],
+                "day": idata.posterior.coords["day"]
+            }
+        )
+    if 'f_gp_stored' in fit.stan_variables() and 'f_gp_stored' not in idata.posterior:
+        f_gp_data = fit.stan_variable('f_gp_stored')  # shape (chain, draw, obs_weight)
+        idata.posterior['f_gp_stored'] = xr.DataArray(
+            f_gp_data,
+            dims=("chain", "draw", "obs_weight"),
+            coords={
+                "chain": idata.posterior.coords["chain"],
+                "draw": idata.posterior.coords["draw"],
+                "obs_weight": idata.posterior.coords["obs_weight"]
+            }
+        )
+    if 'f_daily_stored' in fit.stan_variables() and 'f_daily_stored' not in idata.posterior:
+        f_daily_data = fit.stan_variable('f_daily_stored')  # shape (chain, draw, obs_weight)
+        idata.posterior['f_daily_stored'] = xr.DataArray(
+            f_daily_data,
             dims=("chain", "draw", "obs_weight"),
             coords={
                 "chain": idata.posterior.coords["chain"],

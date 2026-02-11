@@ -213,20 +213,24 @@ def prepare_state_space_data(
     df_intensity[intensity_time_col] = pd.to_datetime(df_intensity[intensity_time_col])
 
     # Create full date range covering both weight and intensity data
-    start_date = min(
+    start_datetime = min(
         df_weight[weight_time_col].min(),
         df_intensity[intensity_time_col].min()
     )
-    end_date = max(
+    end_datetime = max(
         df_weight[weight_time_col].max(),
         df_intensity[intensity_time_col].max()
     )
 
+    # Normalize to midnight for date range (intensity data uses daily aggregates)
+    start_date = start_datetime.normalize()
+    end_date = end_datetime.normalize()
+
     date_range = pd.date_range(start=start_date, end=end_date, freq='D')
     D = len(date_range)  # Number of days
 
-    # Create day index mapping
-    date_to_idx = {date: i + 1 for i, date in enumerate(date_range)}
+    # Create day index mapping using date objects (for alignment with weight timestamps)
+    date_to_idx = {date.date(): i + 1 for i, date in enumerate(date_range)}
 
     # Prepare intensity vector (standardized)
     # Merge intensity data with full date range
@@ -251,7 +255,7 @@ def prepare_state_space_data(
 
     # Prepare weight data
     df_weight = df_weight.sort_values(weight_time_col)
-    t_weight_days = (df_weight[weight_time_col] - start_date).dt.total_seconds() / (24 * 3600)
+    t_weight_days = (df_weight[weight_time_col] - start_datetime).dt.total_seconds() / (24 * 3600)
     t_weight_scaled = t_weight_days.values / t_weight_days.max() if t_weight_days.max() > 0 else t_weight_days.values
 
     # Standardize weight
@@ -305,6 +309,7 @@ def prepare_state_space_data(
         '_y_sd': float(weight_std),
         'intensity_mean': float(intensity_mean),
         'intensity_std': float(intensity_std),
+        '_start_date': start_datetime.isoformat(),  # For interpolation
     }
 
     return stan_data
@@ -378,6 +383,168 @@ def compute_log_intensity(
     return df
 
 
+def prepare_state_space_data_with_spline(
+    df_weight: pd.DataFrame,
+    df_intensity: pd.DataFrame,
+    weight_time_col: str = "timestamp",
+    weight_value_col: str = "weight_lbs",
+    intensity_time_col: str = "date",
+    intensity_value_col: str = "intensity",
+    use_sparse: bool = True,
+    n_inducing_points: int = 50,
+    fourier_harmonics: int = 2,
+    include_prediction_grid: bool = False,
+    prediction_hour: float = 8.0,
+    prediction_step_days: int = 1,
+) -> Dict[str, Any]:
+    """Prepare data for state-space model with daily spline component.
+
+    Args:
+        df_weight: DataFrame with weight observations.
+        df_intensity: DataFrame with daily intensity values.
+        weight_time_col: Name of timestamp column in df_weight.
+        weight_value_col: Name of value column in df_weight.
+        intensity_time_col: Name of date column in df_intensity.
+        intensity_value_col: Name of intensity column in df_intensity.
+        use_sparse: Whether to use sparse GP approximation.
+        n_inducing_points: Number of inducing points for sparse GP.
+        fourier_harmonics: Number of Fourier harmonics for spline model (K parameter).
+        include_prediction_grid: Whether to include prediction grid.
+        prediction_hour: Hour of day (0-24) for prediction points.
+        prediction_step_days: Step size in days for prediction grid.
+
+    Returns:
+        Dictionary with Stan data format for weight_state_space_impulse_spline.stan.
+    """
+    # Ensure datetime
+    df_weight = df_weight.copy()
+    df_intensity = df_intensity.copy()
+
+    df_weight[weight_time_col] = pd.to_datetime(df_weight[weight_time_col])
+    df_intensity[intensity_time_col] = pd.to_datetime(df_intensity[intensity_time_col])
+
+    # Create full date range covering both weight and intensity data
+    start_datetime = min(
+        df_weight[weight_time_col].min(),
+        df_intensity[intensity_time_col].min()
+    )
+    end_datetime = max(
+        df_weight[weight_time_col].max(),
+        df_intensity[intensity_time_col].max()
+    )
+
+    # Normalize to midnight for date range (intensity data uses daily aggregates)
+    start_date = start_datetime.normalize()
+    end_date = end_datetime.normalize()
+
+    date_range = pd.date_range(start=start_date, end=end_date, freq='D')
+    D = len(date_range)  # Number of days
+
+    # Create day index mapping using date objects (for alignment with weight timestamps)
+    date_to_idx = {date.date(): i + 1 for i, date in enumerate(date_range)}
+
+    # Prepare intensity vector (standardized)
+    # Merge intensity data with full date range
+    intensity_full = pd.DataFrame({'date': date_range})
+    intensity_full = pd.merge(
+        intensity_full,
+        df_intensity[[intensity_time_col, intensity_value_col]],
+        left_on='date',
+        right_on=intensity_time_col,
+        how='left'
+    )
+    intensity_full[intensity_value_col] = intensity_full[intensity_value_col].fillna(0.0)
+
+    # Standardize intensity
+    intensity_values = intensity_full[intensity_value_col].values
+    intensity_mean = np.mean(intensity_values)
+    intensity_std = np.std(intensity_values)
+    if intensity_std > 0:
+        intensity_standardized = (intensity_values - intensity_mean) / intensity_std
+    else:
+        intensity_standardized = intensity_values - intensity_mean
+
+    # Prepare weight data
+    df_weight = df_weight.sort_values(weight_time_col)
+    t_weight_days = (df_weight[weight_time_col] - start_datetime).dt.total_seconds() / (24 * 3600)
+    t_weight_scaled = t_weight_days.values / t_weight_days.max() if t_weight_days.max() > 0 else t_weight_days.values
+
+    # Standardize weight
+    weight_values = df_weight[weight_value_col].values
+    weight_mean = np.mean(weight_values)
+    weight_std = np.std(weight_values)
+    if weight_std > 0:
+        weight_standardized = (weight_values - weight_mean) / weight_std
+    else:
+        weight_standardized = weight_values - weight_mean
+
+    # Map weight observations to day index
+    day_idx = []
+    for ts in df_weight[weight_time_col]:
+        # Find closest date in date_range
+        date = ts.date()
+        if date in date_to_idx:
+            day_idx.append(date_to_idx[date])
+        else:
+            # Find nearest date
+            days_diff = [(d.date() - date).days for d in date_range]
+            nearest_idx = np.argmin(np.abs(days_diff))
+            day_idx.append(nearest_idx + 1)
+
+    # Calculate hour of day (0-24) as float
+    hour_of_day = df_weight[weight_time_col].dt.hour + df_weight[weight_time_col].dt.minute / 60.0
+
+    # Prepare sparse GP inducing points if needed
+    t_inducing = np.array([])
+    if use_sparse:
+        # Uniform inducing points across time range
+        if n_inducing_points > 0:
+            t_inducing = np.linspace(0, 1, n_inducing_points)
+
+    # Prepare prediction grid (optional)
+    if include_prediction_grid:
+        # Create prediction time points
+        pred_days = np.arange(0, t_weight_days.max() + prediction_step_days, prediction_step_days)
+        t_pred_scaled = pred_days / t_weight_days.max() if t_weight_days.max() > 0 else pred_days
+
+        # Create prediction hour array (all at same hour for simplicity)
+        hour_of_day_pred = np.full(len(t_pred_scaled), prediction_hour)
+
+        N_pred = len(t_pred_scaled)
+        t_pred = t_pred_scaled.astype(float)
+        hour_of_day_pred = hour_of_day_pred.astype(float)
+    else:
+        N_pred = 0
+        t_pred = np.array([])
+        hour_of_day_pred = np.array([])
+
+    stan_data = {
+        'D': D,
+        'intensity': intensity_standardized.astype(float),
+        'N_weight': len(weight_standardized),
+        't_weight': t_weight_scaled.astype(float),
+        'y_weight': weight_standardized.astype(float),
+        'day_idx': np.array(day_idx, dtype=int),
+        'hour_of_day': hour_of_day.values.astype(float),
+        'K': fourier_harmonics,
+        'use_sparse': 1 if use_sparse else 0,
+        'M': len(t_inducing),
+        't_inducing': t_inducing.astype(float),
+        'N_pred': N_pred,
+        't_pred': t_pred,
+        'hour_of_day_pred': hour_of_day_pred,
+        'weight_mean': float(weight_mean),
+        'weight_std': float(weight_std),
+        '_y_mean': float(weight_mean),
+        '_y_sd': float(weight_std),
+        'intensity_mean': float(intensity_mean),
+        'intensity_std': float(intensity_std),
+        '_start_date': start_datetime.isoformat(),  # For interpolation
+    }
+
+    return stan_data
+
+
 def prepare_state_space_data_cumulative(
     df_weight: pd.DataFrame,
     df_intensity: pd.DataFrame,
@@ -440,3 +607,91 @@ def prepare_state_space_data_cumulative(
     stan_data['cumulative_window'] = cumulative_window
 
     return stan_data
+
+
+def load_intensity_by_activity(
+    data_dir: Union[str, Path] = "data",
+    activity_types: Optional[List[str]] = None,
+    max_hr: float = 185.0,
+) -> pd.DataFrame:
+    """Load workout data and compute daily intensity separated by activity type.
+
+    Args:
+        data_dir: Path to data directory containing DI_CONNECT folder.
+        activity_types: List of activity types to include.
+                       If None, includes ['strength_training', 'walking', 'cycling'].
+        max_hr: Estimated maximum heart rate.
+
+    Returns:
+        DataFrame with columns: 'date', plus columns for each activity type
+        with intensity values for that activity (0 on days without that activity).
+    """
+    data_dir = Path(data_dir)
+
+    if activity_types is None:
+        activity_types = ['strength_training', 'walking', 'cycling']
+
+    # Load health data for resting HR
+    print("Loading health data for resting heart rate...")
+    df_health = load_combined_health_data(data_dir)
+
+    # Initialize result dataframe with full date range
+    result_df = None
+
+    for activity_type in activity_types:
+        print(f"  Loading {activity_type} intensity...")
+        try:
+            # Load workout data for this activity type only
+            df_workouts = load_workout_data(
+                data_dir=data_dir,
+                activity_type=activity_type,
+                include_exercise_details=False,
+            )
+
+            if len(df_workouts) == 0:
+                print(f"    No {activity_type} data found")
+                continue
+
+            # Compute intensity for this activity type
+            df_intensity = compute_workout_intensity(
+                df_workouts=df_workouts,
+                df_health=df_health,
+                max_hr=max_hr,
+                intensity_col=activity_type,  # Use activity type as column name
+            )
+
+            if result_df is None:
+                result_df = df_intensity.rename(columns={activity_type: 'total'})
+                result_df[activity_type] = result_df['total']
+                result_df = result_df.drop(columns=['total'])
+            else:
+                # Merge with existing result_df
+                result_df = pd.merge(
+                    result_df,
+                    df_intensity.rename(columns={activity_type: activity_type}),
+                    on='date',
+                    how='outer'
+                )
+
+        except Exception as e:
+            print(f"    Error processing {activity_type}: {e}")
+
+    if result_df is None:
+        print("No intensity data loaded for any activity type")
+        empty_df = pd.DataFrame(columns=['date'] + activity_types)
+        empty_df['date'] = pd.to_datetime(empty_df['date'])
+        return empty_df
+
+    # Fill missing values with 0
+    for activity_type in activity_types:
+        if activity_type in result_df.columns:
+            result_df[activity_type] = result_df[activity_type].fillna(0.0)
+        else:
+            result_df[activity_type] = 0.0
+
+    # Ensure date column is datetime and sort
+    result_df['date'] = pd.to_datetime(result_df['date'])
+    result_df = result_df.sort_values('date').reset_index(drop=True)
+
+    print(f"Loaded intensity data for {len(result_df)} days with activities: {[col for col in result_df.columns if col != 'date']}")
+    return result_df
