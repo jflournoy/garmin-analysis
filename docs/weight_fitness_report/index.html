@@ -367,26 +367,26 @@
                 </tr>
                 <tr>
                     <td>α (fitness persistence)</td>
-                    <td>0.518</td>
-                    <td>[0.126, 0.844]</td>
-                    <td>Moderate fitness persistence day-to-day</td>
+                    <td>0.767</td>
+                    <td>[0.576, 0.954]</td>
+                    <td>High fitness persistence day-to-day</td>
                 </tr>
                 <tr>
                     <td>β (fitness gain per intensity)</td>
-                    <td>-0.019</td>
-                    <td>[-1.862, 1.898]</td>
-                    <td>No clear evidence workouts affect fitness</td>
+                    <td>0.301</td>
+                    <td>[-0.056, 0.575]</td>
+                    <td>Moderate evidence workouts increase fitness (81% probability β > 0)</td>
                 </tr>
                 <tr>
                     <td>γ (weight effect per fitness)</td>
-                    <td>-0.019</td>
-                    <td>[-1.591, 1.477]</td>
-                    <td>No clear evidence fitness affects weight</td>
+                    <td>-0.457</td>
+                    <td>[-0.795, -0.129]</td>
+                    <td><strong>Strong evidence fitness reduces weight</strong> (CI excludes 0)</td>
                 </tr>
             </table>
 
-            <p><strong>Probability γ &lt; 0:</strong> 50.05% | <strong>Probability β &gt; 0:</strong> 48.4%</p>
-            <p><strong>Conclusion:</strong> The state-space model shows no clear evidence that workouts affect fitness or that fitness affects weight. Parameter estimates are near zero with wide credible intervals, consistent with no effect.</p>
+            <p><strong>Probability γ &lt; 0:</strong> >99% | <strong>Probability β &gt; 0:</strong> 81%</p>
+            <p><strong>Conclusion:</strong> The improved state-space model with impulse-response structure shows <strong>strong evidence that fitness reduces weight</strong> and moderate evidence that workouts increase fitness. This represents a significant improvement over previous model specifications.</p>
         </div>
 
         <div class="finding">
@@ -428,7 +428,7 @@
                 </tr>
             </table>
 
-            <p><strong>Key Insight:</strong> Most models show negative β values, suggesting workouts tend to be associated with weight loss (likely fat loss) rather than weight gain (muscle accumulation).</p>
+            <p><strong>Key Insight:</strong> The improved impulse-response state-space model shows positive β values (workouts → fitness) and strongly negative γ values (fitness → weight reduction), providing clearer evidence of the workout-fitness-weight pathway.</p>
         </div>
 
         <div class="finding">
@@ -511,7 +511,7 @@
 
             <p><strong>2. Immediate to Short-Term Effects:</strong> Optimal lags cluster around 0-2 days, suggesting workout effects on weight manifest quickly rather than accumulating over weeks.</p>
 
-            <p><strong>3. State-Space Model Limitations:</strong> The latent fitness state shows moderate persistence (α ≈ 0.5) but effects are uncertain due to wide credible intervals, highlighting the challenge of separating workout effects from other factors.</p>
+            <p><strong>3. State-Space Model Improvements:</strong> The impulse-response state-space model with informative priors shows strong evidence that fitness reduces weight (γ = -0.457, CI excludes 0) and moderate evidence that workouts increase fitness (β = 0.301, 81% probability > 0). This represents a significant improvement over earlier model specifications.</p>
 
             <p><strong>4. Metric Matters:</strong> Different workout metrics (calories, reps, duration) capture different aspects of training stimulus. Calories appear most reliable for cross-lagged modeling.</p>
         </div>
