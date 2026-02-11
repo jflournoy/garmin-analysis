@@ -227,7 +227,7 @@
     <header>
         <h1>Weight-Fitness Model Analysis Report</h1>
         <div class="subtitle">Bayesian Analysis of Garmin Health Data: Modeling the Relationship Between Workouts and Weight</div>
-        <div class="date">Generated: 2026-02-09 | Analysis Period: 2024-2026</div>
+        <div class="date">Generated: 2026-02-11 | Analysis Period: 2024-2026</div>
     </header>
 
     <div class="nav-links">
@@ -240,7 +240,7 @@
 
     <section id="overview" class="section">
         <h2>Project Overview</h2>
-        <p>This report presents a comprehensive Bayesian analysis of the relationship between workout intensity (fitness) and weight measurements using personal Garmin health data. The analysis employs three complementary modeling approaches:</p>
+        <p>This report presents a comprehensive Bayesian analysis of the relationship between workout intensity (fitness) and weight measurements using personal Garmin health data. The analysis employs two complementary modeling approaches:</p>
 
         <div class="grid">
             <div class="card">
@@ -250,10 +250,6 @@
             <div class="card">
                 <h4>Cross-Lagged GP Models</h4>
                 <p>Direct modeling of lagged effects where workouts at time <em>t-τ</em> affect weight at time <em>t</em>.</p>
-            </div>
-            <div class="card">
-                <h4>Bivariate Correlation Models</h4>
-                <p>Joint modeling of weight and other health metrics to understand correlations.</p>
             </div>
         </div>
 
@@ -269,11 +265,14 @@
             <p><strong>Core Idea:</strong> Workouts build a latent fitness state that evolves daily and affects weight measurements.</p>
 
             <div class="equation">
+                <strong>Impulse Accumulation:</strong><br>
+                impulse[t] = ψ·impulse[t-1] + intensity[t]<br><br>
+
                 <strong>Fitness Evolution:</strong><br>
-                fitness[t] = α·fitness[t-1] + β·intensity[t-1] + ε<sub>f</sub>[t], ε<sub>f</sub>[t] ~ N(0, σ<sub>f</sub>)<br><br>
+                fitness[t] = α·fitness[t-1] + β·impulse[t-1] + ε<sub>f</sub>[t], ε<sub>f</sub>[t] ~ N(0, σ<sub>f</sub>)<br><br>
 
                 <strong>Weight Observation:</strong><br>
-                weight[t] = baseline + γ·fitness[day(t)] + GP(t) + ε<sub>w</sub>[t], ε<sub>w</sub>[t] ~ N(0, σ<sub>w</sub>)
+                weight[t] = γ·fitness[day(t)] + GP(t) + ε<sub>w</sub>[t], ε<sub>w</sub>[t] ~ N(0, σ<sub>w</sub>)
             </div>
 
             <p><strong>Key Parameters:</strong></p>
@@ -286,17 +285,22 @@
                 <tr>
                     <td>α</td>
                     <td>Fitness persistence (0 &lt; α &lt; 1)</td>
-                    <td>Beta(2, 2)</td>
+                    <td>Beta(8, 2)</td>
+                </tr>
+                <tr>
+                    <td>ψ</td>
+                    <td>Impulse decay (0 &lt; ψ &lt; 1)</td>
+                    <td>Beta(5, 2)</td>
                 </tr>
                 <tr>
                     <td>β</td>
-                    <td>Fitness gain per unit workout intensity</td>
-                    <td>Normal(0, 1)</td>
+                    <td>Fitness gain per unit impulse</td>
+                    <td>Normal(0.3, 0.2)</td>
                 </tr>
                 <tr>
                     <td>γ</td>
                     <td>Weight effect per unit fitness</td>
-                    <td>Normal(0, 1)</td>
+                    <td>Normal(-0.5, 0.2)</td>
                 </tr>
                 <tr>
                     <td>σ<sub>f</sub></td>
@@ -337,18 +341,6 @@
             <p><strong>Robust Likelihood:</strong> Student-t distributions for observation noise provide robustness to outliers.</p>
         </div>
 
-        <div class="model-card">
-            <h3>3. Bivariate Gaussian Process Models</h3>
-            <p><strong>Core Idea:</strong> Joint modeling of weight and another health metric (e.g., resting heart rate) using separable kernel with coregionalization matrix.</p>
-
-            <div class="equation">
-                <strong>Bivariate GP:</strong><br>
-                [f<sub>1</sub>(t), f<sub>2</sub>(t)]<sup>T</sup> ~ GP(0, K(t, t′) ⊗ B)<br>
-                where B is a 2×2 coregionalization matrix capturing cross-correlation
-            </div>
-
-            <p>This model captures both temporal correlation within each time series and cross-correlation between health metrics.</p>
-        </div>
     </section>
 
     <section id="results" class="section">
@@ -367,25 +359,31 @@
                 </tr>
                 <tr>
                     <td>α (fitness persistence)</td>
-                    <td>0.767</td>
-                    <td>[0.576, 0.954]</td>
+                    <td>0.751</td>
+                    <td>[0.490, 0.944]</td>
                     <td>High fitness persistence day-to-day</td>
                 </tr>
                 <tr>
-                    <td>β (fitness gain per intensity)</td>
-                    <td>0.301</td>
-                    <td>[-0.056, 0.575]</td>
-                    <td>Moderate evidence workouts increase fitness (81% probability β > 0)</td>
+                    <td>ψ (impulse decay)</td>
+                    <td>0.706</td>
+                    <td>[0.338, 0.941]</td>
+                    <td>Moderate impulse persistence (88.5% probability ψ > 0.5)</td>
+                </tr>
+                <tr>
+                    <td>β (fitness gain per impulse)</td>
+                    <td>0.300</td>
+                    <td>[-0.091, 0.701]</td>
+                    <td>Moderate evidence workouts increase fitness (93.5% probability β > 0)</td>
                 </tr>
                 <tr>
                     <td>γ (weight effect per fitness)</td>
-                    <td>-0.457</td>
-                    <td>[-0.795, -0.129]</td>
+                    <td>-0.456</td>
+                    <td>[-0.881, -0.103]</td>
                     <td><strong>Strong evidence fitness reduces weight</strong> (CI excludes 0)</td>
                 </tr>
             </table>
 
-            <p><strong>Probability γ &lt; 0:</strong> >99% | <strong>Probability β &gt; 0:</strong> 81%</p>
+            <p><strong>Probability γ &lt; 0:</strong> 100% | <strong>Probability β &gt; 0:</strong> 93.5% | <strong>Probability ψ &gt; 0.5:</strong> 88.5%</p>
             <p><strong>Conclusion:</strong> The improved state-space model with impulse-response structure shows <strong>strong evidence that fitness reduces weight</strong> and moderate evidence that workouts increase fitness. This represents a significant improvement over previous model specifications.</p>
         </div>
 
@@ -462,7 +460,7 @@
         <div class="visualization">
             <h3>State-Space Model Parameter Posteriors</h3>
             <img src="visualizations/posterior_distributions.png" alt="Posterior distributions of key parameters">
-            <div class="caption">Posterior distributions for α (fitness persistence), β (fitness gain per intensity), γ (weight effect per fitness), and σ<sub>w</sub> (weight observation noise). Dashed red lines show 95% credible intervals.</div>
+            <div class="caption">Posterior distributions for α (fitness persistence), ψ (impulse decay), β (fitness gain per impulse), γ (weight effect per fitness), and σ<sub>w</sub> (weight observation noise). Dashed red lines show 95% credible intervals.</div>
         </div>
 
         <div class="visualization">
@@ -475,6 +473,12 @@
             <h3>State-Space Model Expectations: Fitness and Weight Predictions</h3>
             <img src="visualizations/state_space_expectations.png" alt="State-space model fitness and weight expectations">
             <div class="caption">Two-panel visualization of state-space model expectations. Top: Latent fitness state over time (blue line) with workout intensity bars (orange). Bottom: Weight predictions (blue line) with actual weight measurements (gray points). Shows how fitness state evolves and how weight predictions track observations.</div>
+        </div>
+
+        <div class="visualization">
+            <h3>MCMC Trace Plots: Parameter Convergence Diagnostics</h3>
+            <img src="visualizations/trace_plots.png" alt="MCMC trace plots for parameter convergence">
+            <div class="caption">Trace plots showing MCMC sampling for key parameters (α, ψ, β, γ, σ_f, σ_w) across 4 chains. Left panels show trace plots, right panels show rank histograms. All chains mix well with no apparent divergences, indicating good convergence.</div>
         </div>
 
         <div class="visualization">
@@ -562,8 +566,7 @@
 garmin-analysis-v2/
 ├── stan/                    # Stan model files
 │   ├── weight_state_space.stan
-│   ├── weight_gp_crosslagged_*.stan
-│   └── weight_gp_bivariate.stan
+│   └── weight_gp_crosslagged_*.stan
 ├── src/
 │   ├── models/fit_weight.py    # Model fitting with caching
 │   ├── analysis/analyze_state_space.py
@@ -577,7 +580,7 @@ garmin-analysis-v2/
         <p><strong>Weight-Fitness Model Analysis Report</strong></p>
         <p>Generated using Bayesian methods with Garmin health data | Analysis period: 2024-2026</p>
         <p>Model implementations: Stan state-space and Gaussian Process models | Visualization: Matplotlib/Seaborn</p>
-        <p>Report generated: 2026-02-09 | Project: garmin-analysis-v2</p>
+        <p>Report generated: 2026-02-11 | Project: garmin-analysis-v2</p>
     </footer>
 </body>
 </html>
