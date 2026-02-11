@@ -348,7 +348,7 @@
 
         <div class="finding">
             <h3>State-Space Model Results</h3>
-            <p>Based on analysis with informative priors (n=4 chains, 500 warmup + 500 sampling iterations):</p>
+            <p>Based on analysis with enhanced spline model (n=4 chains, 1000 warmup + 2000 sampling iterations, adapt_delta=0.99):</p>
 
             <table class="parameter-table">
                 <tr>
@@ -359,32 +359,32 @@
                 </tr>
                 <tr>
                     <td>α (fitness persistence)</td>
-                    <td>0.751</td>
-                    <td>[0.490, 0.944]</td>
+                    <td>0.741</td>
+                    <td>[0.498, 0.944]</td>
                     <td>High fitness persistence day-to-day</td>
                 </tr>
                 <tr>
                     <td>ψ (impulse decay)</td>
-                    <td>0.706</td>
-                    <td>[0.338, 0.941]</td>
-                    <td>Moderate impulse persistence (88.5% probability ψ > 0.5)</td>
+                    <td>0.639</td>
+                    <td>[0.314, 0.902]</td>
+                    <td>Moderate impulse persistence (~82% probability ψ > 0.5)</td>
                 </tr>
                 <tr>
                     <td>β (fitness gain per impulse)</td>
-                    <td>0.300</td>
-                    <td>[-0.091, 0.701]</td>
-                    <td>Moderate evidence workouts increase fitness (93.5% probability β > 0)</td>
+                    <td>0.078</td>
+                    <td>[-0.020, 0.371]</td>
+                    <td>Weak evidence workouts increase fitness (~76% probability β > 0)</td>
                 </tr>
                 <tr>
                     <td>γ (weight effect per fitness)</td>
-                    <td>-0.456</td>
-                    <td>[-0.881, -0.103]</td>
+                    <td>-0.355</td>
+                    <td>[-0.801, -0.003]</td>
                     <td><strong>Strong evidence fitness reduces weight</strong> (CI excludes 0)</td>
                 </tr>
             </table>
 
-            <p><strong>Probability γ &lt; 0:</strong> 100% | <strong>Probability β &gt; 0:</strong> 93.5% | <strong>Probability ψ &gt; 0.5:</strong> 88.5%</p>
-            <p><strong>Conclusion:</strong> The improved state-space model with impulse-response structure shows <strong>strong evidence that fitness reduces weight</strong> and moderate evidence that workouts increase fitness. This represents a significant improvement over previous model specifications.</p>
+            <p><strong>Probability γ &lt; 0:</strong> >99.9% | <strong>Probability β &gt; 0:</strong> ~76% | <strong>Probability ψ &gt; 0.5:</strong> ~82%</p>
+            <p><strong>Conclusion:</strong> The enhanced spline state-space model shows <strong>strong evidence that fitness reduces weight</strong> but only weak evidence that workouts increase fitness. The model captures daily weight patterns accounting for 3.2% of total variance with a daily amplitude of 0.59 standardized units.</p>
         </div>
 
         <div class="finding">
@@ -460,7 +460,7 @@
         <div class="visualization">
             <h3>State-Space Model Parameter Posteriors</h3>
             <img src="visualizations/posterior_distributions.png" alt="Posterior distributions of key parameters">
-            <div class="caption">Posterior distributions for α (fitness persistence), ψ (impulse decay), β (fitness gain per impulse), γ (weight effect per fitness), and σ<sub>w</sub> (weight observation noise). Dashed red lines show 95% credible intervals.</div>
+            <div class="caption">Posterior distributions from impulse-response state-space model (500 warmup + 500 sampling iterations) for α (fitness persistence), ψ (impulse decay), β (fitness gain per impulse), γ (weight effect per fitness), and σ<sub>w</sub> (weight observation noise). Dashed red lines show 95% credible intervals.</div>
         </div>
 
         <div class="visualization">
@@ -472,7 +472,13 @@
         <div class="visualization">
             <h3>State-Space Model Expectations: Fitness and Weight Predictions</h3>
             <img src="visualizations/state_space_expectations.png" alt="State-space model fitness and weight expectations">
-            <div class="caption">Two-panel visualization of state-space model expectations. Top: Latent fitness state over time (blue line) with workout intensity bars (orange). Bottom: Weight predictions (blue line) with actual weight measurements (gray points). Shows how fitness state evolves and how weight predictions track observations.</div>
+            <div class="caption">Two-panel visualization from enhanced spline state-space model (1000 warmup + 2000 sampling, adapt_delta=0.99). Top: Latent fitness state over time (blue line) with workout intensity bars (orange). Bottom: Weight predictions (blue line) with actual weight measurements (gray points). Shows how fitness state evolves and how weight predictions track observations.</div>
+        </div>
+
+        <div class="visualization">
+            <h3>Spline Decomposition: Weight Components in Enhanced Model</h3>
+            <img src="visualizations/spline_decomposition.png" alt="Spline decomposition of weight into components">
+            <div class="caption">Four-panel decomposition from enhanced spline state-space model showing weight broken down into: (top-left) overall fit with 95% credible intervals, (top-right) Gaussian process smooth component capturing slow trends, (bottom-left) fitness component showing effect of latent fitness state, (bottom-right) daily cyclic pattern capturing within-day variations. Daily component accounts for 3.2% of total variance.</div>
         </div>
 
         <div class="visualization">
@@ -515,7 +521,7 @@
 
             <p><strong>2. Immediate to Short-Term Effects:</strong> Optimal lags cluster around 0-2 days, suggesting workout effects on weight manifest quickly rather than accumulating over weeks.</p>
 
-            <p><strong>3. State-Space Model Improvements:</strong> The impulse-response state-space model with informative priors shows strong evidence that fitness reduces weight (γ = -0.457, CI excludes 0) and moderate evidence that workouts increase fitness (β = 0.301, 81% probability > 0). This represents a significant improvement over earlier model specifications.</p>
+            <p><strong>3. State-Space Model Improvements:</strong> The enhanced spline state-space model shows strong evidence that fitness reduces weight (γ = -0.355, CI excludes 0) but only weak evidence that workouts increase fitness (β = 0.078, ~76% probability > 0). Daily cyclic patterns account for 3.2% of total variance.</p>
 
             <p><strong>4. Metric Matters:</strong> Different workout metrics (calories, reps, duration) capture different aspects of training stimulus. Calories appear most reliable for cross-lagged modeling.</p>
         </div>
