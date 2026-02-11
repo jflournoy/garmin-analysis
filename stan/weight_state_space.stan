@@ -63,8 +63,8 @@ parameters {
   real gamma;                         // weight effect per unit fitness
 
   // Process and observation noise
-  real<lower=0> sigma_f;              // fitness process noise
-  real<lower=0> sigma_w;              // weight observation noise
+  real<lower=0.01> sigma_f;           // fitness process noise
+  real<lower=0.01> sigma_w;           // weight observation noise
 
   // GP parameters for intrinsic weight dynamics
   real<lower=0.01, upper=5> alpha_gp; // GP marginal std
@@ -89,8 +89,8 @@ transformed parameters {
   // GP latent function at weight times
   vector[N_weight] f_gp;
 
-  // Compute fitness states (stationary initialization)
-  fitness[1] = fitness_raw[1] * sigma_f / sqrt(1 - square(alpha));
+  // Compute fitness states (start at 0, non-centered parameterization)
+  fitness[1] = fitness_raw[1] * sigma_f;  // Start from innovation, not stationary
   for (t in 2:D) {
     fitness[t] = alpha * fitness[t-1] + beta * intensity[t-1] + fitness_raw[t] * sigma_f;
   }
@@ -113,18 +113,23 @@ transformed parameters {
 }
 
 model {
-  // Priors for state-space parameters
-  alpha ~ beta(2, 2);                 // weakly informative, symmetric around 0.5
-  beta ~ normal(0, 1);                // weakly informative for standardized intensity
-  gamma ~ normal(0, 1);               // weakly informative for standardized fitness effect
+  // Priors for state-space parameters - more informative based on domain knowledge
+  // alpha: fitness persistence, should be high (0.8-0.95) since fitness persists
+  alpha ~ beta(8, 2);                 // favors values around 0.8
+  // beta: fitness gain per intensity, should be positive but moderate
+  beta ~ normal(0.2, 0.3);            // positive, modest effect for standardized intensity
+  // gamma: weight effect per fitness, should be negative (fitness reduces weight)
+  gamma ~ normal(-0.5, 0.2);          // negative, stronger prior based on physiology
 
-  // Noise priors - more flexible for standardized data
+  // Noise priors - keep weakly informative
   sigma_f ~ exponential(1);           // weakly informative, mean=1, mode=0
   sigma_w ~ exponential(1);           // weakly informative, mean=1, mode=0
 
-  // GP priors
-  alpha_gp ~ normal(0, 1);            // weakly informative (truncated at 0.01,5)
-  rho_gp ~ inv_gamma(3, 1);         // weakly informative for length scale (mean=0.5, mode=0.25)
+  // GP priors - strongly constrain to prevent capturing fitness signal
+  // alpha_gp: marginal std of GP, smaller values mean GP explains less variance
+  alpha_gp ~ exponential(5);          // strongly favors small values (mean=0.2, mode=0)
+  // rho_gp: length scale, longer values mean smoother variations
+  rho_gp ~ inv_gamma(8, 1);         // favors longer length scales (mean=0.143, mode=0.111)
 
   // Priors for non-centered parameters
   fitness_raw ~ std_normal();
