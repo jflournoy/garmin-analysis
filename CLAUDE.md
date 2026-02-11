@@ -42,6 +42,7 @@ This project is a Bayesian analysis of Garmin health data using Stan.
   - `uv run python script.py` - Run Python scripts
   - `uv sync` - Sync dependencies
   - Never use raw `python` or `pip` commands
+  - **Note**: When running analysis scripts, you may see a warning about VIRTUAL_ENV mismatch if an external conda environment is active. This warning can be ignored as uv uses the project's `.venv`.
 
 - **JavaScript/Node**: Use `npm` for package management
   - `npm install` - Install dependencies

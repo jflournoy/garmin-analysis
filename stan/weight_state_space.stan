@@ -15,21 +15,8 @@
 
 functions {
   // Define exponential covariance function for GP
-  vector gp_exp_quad_cov(array[] real x,
-                         real alpha,
-                         real rho) {
-    int N = size(x);
-    vector[N] result;
-    real alpha_sq = square(alpha);
-    real neg_half_inv_rho_sq = -0.5 / square(rho);
 
-    for (i in 1:N) {
-      result[i] = alpha_sq * exp(neg_half_inv_rho_sq * square(x[i] - x[i]));
-    }
-    return result;
-  }
-
-  matrix gp_exp_quad_cov(array[] real x1,
+  matrix gp_exp_quad_cov_custom(array[] real x1,
                          array[] real x2,
                          real alpha,
                          real rho) {
@@ -109,7 +96,7 @@ transformed parameters {
   }
 
   // GP covariance at inducing points
-  K_uu = gp_exp_quad_cov(t_inducing, alpha_gp, rho_gp);
+  K_uu = gp_exp_quad_cov_custom(t_inducing, t_inducing, alpha_gp, rho_gp);
   for (i in 1:M) {
     K_uu[i, i] += square(alpha_gp) * 1e-4 + 1e-6;  // add jitter
   }
@@ -120,24 +107,24 @@ transformed parameters {
 
   // Compute GP at weight observation times
   {
-    matrix[N_weight, M] K_fu = gp_exp_quad_cov(t_weight, t_inducing, alpha_gp, rho_gp);
+    matrix[N_weight, M] K_fu = gp_exp_quad_cov_custom(t_weight, t_inducing, alpha_gp, rho_gp);
     f_gp = K_fu * a;
   }
 }
 
 model {
   // Priors for state-space parameters
-  alpha ~ beta(5, 1);                 // favors values around 0.8-0.95
-  beta ~ normal(0, 1);                // weakly informative
-  gamma ~ normal(0, 1);               // weakly informative
+  alpha ~ beta(2, 2);                 // weakly informative, symmetric around 0.5
+  beta ~ normal(0, 1);                // weakly informative for standardized intensity
+  gamma ~ normal(0, 1);               // weakly informative for standardized fitness effect
 
-  // Noise priors
-  sigma_f ~ exponential(1);
-  sigma_w ~ exponential(1);
+  // Noise priors - more flexible for standardized data
+  sigma_f ~ exponential(1);           // weakly informative, mean=1, mode=0
+  sigma_w ~ exponential(1);           // weakly informative, mean=1, mode=0
 
   // GP priors
-  alpha_gp ~ normal(0, 0.5);
-  rho_gp ~ inv_gamma(5, 1);
+  alpha_gp ~ normal(0, 1);            // weakly informative (truncated at 0.01,5)
+  rho_gp ~ inv_gamma(3, 1);         // weakly informative for length scale (mean=0.5, mode=0.25)
 
   // Priors for non-centered parameters
   fitness_raw ~ std_normal();
@@ -175,14 +162,14 @@ generated quantities {
 
   if (N_pred > 0) {
     // Compute GP at prediction points
-    matrix[N_pred, M] K_pred_u = gp_exp_quad_cov(t_pred, t_inducing, alpha_gp, rho_gp);
+    matrix[N_pred, M] K_pred_u = gp_exp_quad_cov_custom(t_pred, t_inducing, alpha_gp, rho_gp);
     vector[N_pred] f_gp_pred = K_pred_u * a;
 
     // Need to map prediction times to day indices
     // For simplicity, assume prediction times align with days (could be extended)
     // Here we'll just use the nearest day (floor(t_pred * D))
     for (i in 1:N_pred) {
-      int day_idx_pred = 1 + floor(t_pred[i] * D);  // approximate mapping
+      int day_idx_pred = 1 + to_int(floor(t_pred[i] * D));  // approximate mapping
       if (day_idx_pred > D) day_idx_pred = D;
       if (day_idx_pred < 1) day_idx_pred = 1;
 

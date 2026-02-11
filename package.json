@@ -48,6 +48,8 @@
     "docs:examples": "node scripts/docs.js examples",
     "markdown:lint": "remark . --quiet",
     "markdown:fix": "remark . --output",
+    "docs:html": "./scripts/generate-docs.sh",
+    "generate-docs": "./scripts/generate-docs.sh",
     "// Advanced Commands": "=== Advanced workflow commands ===",
     "learn": "node scripts/learn.js",
     "tdd": "node scripts/tdd.js",

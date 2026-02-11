@@ -1,0 +1,583 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Weight-Fitness Model Analysis Report</title>
+    <style>
+        :root {
+            --primary-color: #2c3e50;
+            --secondary-color: #3498db;
+            --accent-color: #e74c3c;
+            --light-bg: #f8f9fa;
+            --dark-bg: #2c3e50;
+            --text-color: #333;
+            --text-light: #666;
+            --border-color: #ddd;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            color: var(--text-color);
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #fff;
+        }
+
+        header {
+            background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+            color: white;
+            padding: 2rem;
+            border-radius: 10px;
+            margin-bottom: 2rem;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+
+        h1 {
+            margin: 0;
+            font-size: 2.5rem;
+        }
+
+        .subtitle {
+            font-size: 1.2rem;
+            opacity: 0.9;
+            margin-top: 0.5rem;
+        }
+
+        .date {
+            font-style: italic;
+            margin-top: 1rem;
+            font-size: 0.9rem;
+        }
+
+        h2 {
+            color: var(--primary-color);
+            border-bottom: 3px solid var(--secondary-color);
+            padding-bottom: 0.5rem;
+            margin-top: 2.5rem;
+        }
+
+        h3 {
+            color: var(--secondary-color);
+            margin-top: 1.5rem;
+        }
+
+        .section {
+            background: var(--light-bg);
+            border-radius: 8px;
+            padding: 1.5rem;
+            margin-bottom: 2rem;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        }
+
+        .model-card {
+            background: white;
+            border-left: 4px solid var(--secondary-color);
+            padding: 1rem;
+            margin: 1rem 0;
+            border-radius: 4px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        }
+
+        .equation {
+            font-family: 'Cambria Math', 'Times New Roman', serif;
+            font-size: 1.1rem;
+            background: #f8f9fa;
+            padding: 1rem;
+            border-radius: 5px;
+            margin: 1rem 0;
+            overflow-x: auto;
+            border-left: 3px solid var(--secondary-color);
+        }
+
+        .parameter-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 1rem 0;
+        }
+
+        .parameter-table th, .parameter-table td {
+            border: 1px solid var(--border-color);
+            padding: 0.75rem;
+            text-align: left;
+        }
+
+        .parameter-table th {
+            background-color: var(--primary-color);
+            color: white;
+        }
+
+        .parameter-table tr:nth-child(even) {
+            background-color: var(--light-bg);
+        }
+
+        .visualization {
+            text-align: center;
+            margin: 2rem 0;
+            padding: 1rem;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+
+        .visualization img {
+            max-width: 100%;
+            height: auto;
+            border-radius: 4px;
+        }
+
+        .caption {
+            font-style: italic;
+            color: var(--text-light);
+            margin-top: 0.5rem;
+            font-size: 0.9rem;
+        }
+
+        .finding {
+            background: #e8f4f8;
+            border-left: 4px solid var(--secondary-color);
+            padding: 1rem;
+            margin: 1rem 0;
+            border-radius: 4px;
+        }
+
+        .finding strong {
+            color: var(--primary-color);
+        }
+
+        .interpretation {
+            background: #f0f8f0;
+            border-left: 4px solid #27ae60;
+            padding: 1rem;
+            margin: 1rem 0;
+            border-radius: 4px;
+        }
+
+        .interpretation strong {
+            color: #27ae60;
+        }
+
+        footer {
+            text-align: center;
+            margin-top: 3rem;
+            padding-top: 1rem;
+            border-top: 1px solid var(--border-color);
+            color: var(--text-light);
+            font-size: 0.9rem;
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 1rem;
+            margin: 1rem 0;
+        }
+
+        .card {
+            background: white;
+            border-radius: 8px;
+            padding: 1rem;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .card h4 {
+            margin-top: 0;
+            color: var(--primary-color);
+        }
+
+        .nav-links {
+            display: flex;
+            justify-content: center;
+            gap: 1rem;
+            margin: 1rem 0;
+            flex-wrap: wrap;
+        }
+
+        .nav-links a {
+            text-decoration: none;
+            background: var(--secondary-color);
+            color: white;
+            padding: 0.5rem 1rem;
+            border-radius: 4px;
+            transition: background 0.3s;
+        }
+
+        .nav-links a:hover {
+            background: var(--primary-color);
+        }
+
+        @media (max-width: 768px) {
+            body {
+                padding: 10px;
+            }
+
+            h1 {
+                font-size: 2rem;
+            }
+
+            .section {
+                padding: 1rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>Weight-Fitness Model Analysis Report</h1>
+        <div class="subtitle">Bayesian Analysis of Garmin Health Data: Modeling the Relationship Between Workouts and Weight</div>
+        <div class="date">Generated: 2026-02-09 | Analysis Period: 2024-2026</div>
+    </header>
+
+    <div class="nav-links">
+        <a href="#overview">Overview</a>
+        <a href="#models">Model Descriptions</a>
+        <a href="#results">Key Results</a>
+        <a href="#visualizations">Visualizations</a>
+        <a href="#interpretation">Interpretation</a>
+    </div>
+
+    <section id="overview" class="section">
+        <h2>Project Overview</h2>
+        <p>This report presents a comprehensive Bayesian analysis of the relationship between workout intensity (fitness) and weight measurements using personal Garmin health data. The analysis employs three complementary modeling approaches:</p>
+
+        <div class="grid">
+            <div class="card">
+                <h4>State-Space Models</h4>
+                <p>Track latent fitness state evolution from workouts to weight through a hidden dynamical system.</p>
+            </div>
+            <div class="card">
+                <h4>Cross-Lagged GP Models</h4>
+                <p>Direct modeling of lagged effects where workouts at time <em>t-τ</em> affect weight at time <em>t</em>.</p>
+            </div>
+            <div class="card">
+                <h4>Bivariate Correlation Models</h4>
+                <p>Joint modeling of weight and other health metrics to understand correlations.</p>
+            </div>
+        </div>
+
+        <p><strong>Data Sources:</strong> Garmin DI-Connect exports including weight measurements, workout activities, heart rate, sleep, and other health metrics.</p>
+        <p><strong>Analysis Period:</strong> 678 days with 139 strength training sessions, 921 weight measurements, and comprehensive daily health metrics.</p>
+    </section>
+
+    <section id="models" class="section">
+        <h2>Model Descriptions</h2>
+
+        <div class="model-card">
+            <h3>1. State-Space Model for Fitness-Weight Dynamics</h3>
+            <p><strong>Core Idea:</strong> Workouts build a latent fitness state that evolves daily and affects weight measurements.</p>
+
+            <div class="equation">
+                <strong>Fitness Evolution:</strong><br>
+                fitness[t] = α·fitness[t-1] + β·intensity[t-1] + ε<sub>f</sub>[t], ε<sub>f</sub>[t] ~ N(0, σ<sub>f</sub>)<br><br>
+
+                <strong>Weight Observation:</strong><br>
+                weight[t] = baseline + γ·fitness[day(t)] + GP(t) + ε<sub>w</sub>[t], ε<sub>w</sub>[t] ~ N(0, σ<sub>w</sub>)
+            </div>
+
+            <p><strong>Key Parameters:</strong></p>
+            <table class="parameter-table">
+                <tr>
+                    <th>Parameter</th>
+                    <th>Interpretation</th>
+                    <th>Prior Distribution</th>
+                </tr>
+                <tr>
+                    <td>α</td>
+                    <td>Fitness persistence (0 &lt; α &lt; 1)</td>
+                    <td>Beta(2, 2)</td>
+                </tr>
+                <tr>
+                    <td>β</td>
+                    <td>Fitness gain per unit workout intensity</td>
+                    <td>Normal(0, 1)</td>
+                </tr>
+                <tr>
+                    <td>γ</td>
+                    <td>Weight effect per unit fitness</td>
+                    <td>Normal(0, 1)</td>
+                </tr>
+                <tr>
+                    <td>σ<sub>f</sub></td>
+                    <td>Fitness process noise</td>
+                    <td>Exponential(1)</td>
+                </tr>
+                <tr>
+                    <td>σ<sub>w</sub></td>
+                    <td>Weight observation noise</td>
+                    <td>Exponential(1)</td>
+                </tr>
+            </table>
+
+            <p><strong>Intensity Calculation:</strong> Workout intensity is computed as duration × (avg_hr - resting_hr) / (max_hr - resting_hr) to capture physiological effort.</p>
+        </div>
+
+        <div class="model-card">
+            <h3>2. Cross-Lagged Gaussian Process Models</h3>
+            <p><strong>Core Idea:</strong> Weight depends directly on lagged workout intensity with separate Gaussian Processes for weight intrinsic dynamics and workout processes.</p>
+
+            <div class="equation">
+                <strong>Model Structure:</strong><br>
+                y<sub>weight</sub>(t) = f<sub>weight</sub>(t) + ε<sub>weight</sub><br>
+                y<sub>workout</sub>(t) = f<sub>workout</sub>(t) + ε<sub>workout</sub><br>
+                f<sub>weight</sub>(t) = β·f<sub>workout</sub>(t-τ) + g<sub>weight</sub>(t)<br>
+                g<sub>weight</sub>(t) ~ GP(0, k<sub>weight</sub>(t,t′))<br>
+                f<sub>workout</sub>(t) ~ GP(0, k<sub>workout</sub>(t,t′))<br>
+                ε<sub>i</sub> ~ Student-t(ν<sub>i</sub>, σ<sub>i</sub>)
+            </div>
+
+            <p><strong>Model Variants:</strong></p>
+            <ul>
+                <li><strong>Fixed Lag:</strong> τ specified as data parameter (0, 1, 2, 3, 7 days)</li>
+                <li><strong>Estimated Lag:</strong> τ estimated as parameter with exponential prior</li>
+                <li><strong>Cumulative Lag:</strong> Average effect over window of lag values</li>
+            </ul>
+
+            <p><strong>Robust Likelihood:</strong> Student-t distributions for observation noise provide robustness to outliers.</p>
+        </div>
+
+        <div class="model-card">
+            <h3>3. Bivariate Gaussian Process Models</h3>
+            <p><strong>Core Idea:</strong> Joint modeling of weight and another health metric (e.g., resting heart rate) using separable kernel with coregionalization matrix.</p>
+
+            <div class="equation">
+                <strong>Bivariate GP:</strong><br>
+                [f<sub>1</sub>(t), f<sub>2</sub>(t)]<sup>T</sup> ~ GP(0, K(t, t′) ⊗ B)<br>
+                where B is a 2×2 coregionalization matrix capturing cross-correlation
+            </div>
+
+            <p>This model captures both temporal correlation within each time series and cross-correlation between health metrics.</p>
+        </div>
+    </section>
+
+    <section id="results" class="section">
+        <h2>Key Results and Findings</h2>
+
+        <div class="finding">
+            <h3>State-Space Model Results</h3>
+            <p>Based on analysis with informative priors (n=4 chains, 500 warmup + 500 sampling iterations):</p>
+
+            <table class="parameter-table">
+                <tr>
+                    <th>Parameter</th>
+                    <th>Mean</th>
+                    <th>95% Credible Interval</th>
+                    <th>Interpretation</th>
+                </tr>
+                <tr>
+                    <td>α (fitness persistence)</td>
+                    <td>0.518</td>
+                    <td>[0.126, 0.844]</td>
+                    <td>Moderate fitness persistence day-to-day</td>
+                </tr>
+                <tr>
+                    <td>β (fitness gain per intensity)</td>
+                    <td>-0.019</td>
+                    <td>[-1.862, 1.898]</td>
+                    <td>No clear evidence workouts affect fitness</td>
+                </tr>
+                <tr>
+                    <td>γ (weight effect per fitness)</td>
+                    <td>-0.019</td>
+                    <td>[-1.591, 1.477]</td>
+                    <td>No clear evidence fitness affects weight</td>
+                </tr>
+            </table>
+
+            <p><strong>Probability γ &lt; 0:</strong> 50.05% | <strong>Probability β &gt; 0:</strong> 48.4%</p>
+            <p><strong>Conclusion:</strong> The state-space model shows no clear evidence that workouts affect fitness or that fitness affects weight. Parameter estimates are near zero with wide credible intervals, consistent with no effect.</p>
+        </div>
+
+        <div class="finding">
+            <h3>Cross-Lagged Model Comparison</h3>
+            <p>Analysis of three workout types (strength training, walking, cycling) across multiple lag models:</p>
+
+            <table class="parameter-table">
+                <tr>
+                    <th>Workout Type</th>
+                    <th>Models Compared</th>
+                    <th>Average β</th>
+                    <th>β &gt; 0</th>
+                    <th>β &lt; 0</th>
+                    <th>Best Model</th>
+                </tr>
+                <tr>
+                    <td>Strength Training</td>
+                    <td>7</td>
+                    <td>-0.111</td>
+                    <td>1</td>
+                    <td>6</td>
+                    <td>Fixed lag (varied)</td>
+                </tr>
+                <tr>
+                    <td>Walking</td>
+                    <td>7</td>
+                    <td>-0.164</td>
+                    <td>1</td>
+                    <td>6</td>
+                    <td>Fixed lag (varied)</td>
+                </tr>
+                <tr>
+                    <td>Cycling</td>
+                    <td>7</td>
+                    <td>-0.197</td>
+                    <td>1</td>
+                    <td>6</td>
+                    <td>Fixed lag (varied)</td>
+                </tr>
+            </table>
+
+            <p><strong>Key Insight:</strong> Most models show negative β values, suggesting workouts tend to be associated with weight loss (likely fat loss) rather than weight gain (muscle accumulation).</p>
+        </div>
+
+        <div class="finding">
+            <h3>Health-Workout Correlation Analysis</h3>
+            <p>Comprehensive analysis of 87 health-workout relationships revealed:</p>
+            <ul>
+                <li><strong>63.2% significant relationships</strong> (55 out of 87)</li>
+                <li><strong>Strongest positive effect:</strong> Cycling → Total Distance (r = 0.448, p &lt; 1e-46)</li>
+                <li><strong>Strongest negative effect:</strong> Cycling → Total Steps (r = -0.145, p &lt; 1e-5)</li>
+                <li><strong>Most common optimal lag:</strong> 0 days (27 relationships), suggesting immediate effects</li>
+            </ul>
+
+            <p><strong>Workout Impact by Category:</strong></p>
+            <ul>
+                <li><strong>Cycling:</strong> 20 significant effects (15 positive, 5 negative)</li>
+                <li><strong>Walking:</strong> 16 significant effects (11 positive, 5 negative)</li>
+                <li><strong>Strength Training:</strong> 19 significant effects (10 positive, 9 negative)</li>
+            </ul>
+        </div>
+    </section>
+
+    <section id="visualizations" class="section">
+        <h2>Visualizations</h2>
+
+        <div class="visualization">
+            <h3>Data Overview: Weight and Workout Intensity</h3>
+            <img src="visualizations/data_overview.png" alt="Weight measurements and workout intensity over time">
+            <div class="caption">Time series of weight measurements (blue line) and daily workout intensity (orange bars). Weight shows gradual trends with short-term fluctuations, while workouts exhibit sporadic intensity peaks.</div>
+        </div>
+
+        <div class="visualization">
+            <h3>State-Space Model Parameter Posteriors</h3>
+            <img src="visualizations/posterior_distributions.png" alt="Posterior distributions of key parameters">
+            <div class="caption">Posterior distributions for α (fitness persistence), β (fitness gain per intensity), γ (weight effect per fitness), and σ<sub>w</sub> (weight observation noise). Dashed red lines show 95% credible intervals.</div>
+        </div>
+
+        <div class="visualization">
+            <h3>Parameter Relationships</h3>
+            <img src="visualizations/parameter_relationships.png" alt="Scatter plots of parameter relationships">
+            <div class="caption">Scatter plots showing relationships between α vs β (left) and β vs γ (right). Each point represents a single MCMC sample. No strong correlations are evident between parameters.</div>
+        </div>
+
+        <div class="visualization">
+            <h3>State-Space Model Expectations: Fitness and Weight Predictions</h3>
+            <img src="visualizations/state_space_expectations.png" alt="State-space model fitness and weight expectations">
+            <div class="caption">Two-panel visualization of state-space model expectations. Top: Latent fitness state over time (blue line) with workout intensity bars (orange). Bottom: Weight predictions (blue line) with actual weight measurements (gray points). Shows how fitness state evolves and how weight predictions track observations.</div>
+        </div>
+
+        <div class="visualization">
+            <h3>Cross-Lagged Effect Sizes by Workout Type</h3>
+            <img src="visualizations/effect_sizes_comparison.png" alt="Effect sizes comparison across workout types">
+            <div class="caption">Comparison of β effect sizes (workout → weight) across different workout types and modeling approaches. Negative values indicate workouts associated with weight loss.</div>
+        </div>
+
+        <div class="visualization">
+            <h3>Lag-Effect Relationship</h3>
+            <img src="visualizations/lag_effect_relationship.png" alt="Lag effect relationship">
+            <div class="caption">Relationship between lag time (days) and effect size β. Effects tend to be strongest at shorter lags (0-2 days) and diminish with longer delays.</div>
+        </div>
+
+        <div class="visualization">
+            <h3>Credible Interval Widths by Model Type</h3>
+            <img src="visualizations/ci_widths_comparison.png" alt="Credible interval widths comparison">
+            <div class="caption">Comparison of credible interval widths across different modeling approaches. Fixed lag models generally provide more precise estimates than cumulative lag models.</div>
+        </div>
+
+        <div class="visualization">
+            <h3>Beta vs Lag for All Workout Types</h3>
+            <img src="visualizations/beta_vs_lag_all_variables.png" alt="Beta vs lag for all variables">
+            <div class="caption">Effect size β across different lag values for strength training, walking, and cycling. Most effects are negative, suggesting workouts are associated with weight loss rather than gain.</div>
+        </div>
+    </section>
+
+    <section id="interpretation" class="section">
+        <h2>Interpretation and Practical Implications</h2>
+
+        <div class="interpretation">
+            <h3>Key Insights</h3>
+            <p><strong>1. Workouts Generally Associated with Weight Loss:</strong> Across most models and workout types, the estimated effect (β) is negative, suggesting workouts are more likely associated with fat loss than muscle gain in this dataset.</p>
+
+            <p><strong>2. Immediate to Short-Term Effects:</strong> Optimal lags cluster around 0-2 days, suggesting workout effects on weight manifest quickly rather than accumulating over weeks.</p>
+
+            <p><strong>3. State-Space Model Limitations:</strong> The latent fitness state shows moderate persistence (α ≈ 0.5) but effects are uncertain due to wide credible intervals, highlighting the challenge of separating workout effects from other factors.</p>
+
+            <p><strong>4. Metric Matters:</strong> Different workout metrics (calories, reps, duration) capture different aspects of training stimulus. Calories appear most reliable for cross-lagged modeling.</p>
+        </div>
+
+        <div class="interpretation">
+            <h3>Model Comparison and Selection</h3>
+            <p><strong>For understanding cumulative fitness effects:</strong> State-space models provide a theoretical framework for how workouts build fitness that then affects weight.</p>
+
+            <p><strong>For detecting direct lagged effects:</strong> Cross-lagged GP models offer flexible approaches with different lag specifications.</p>
+
+            <p><strong>For precision vs flexibility trade-off:</strong> Fixed lag models provide more precise estimates, while estimated/cumulative lag models are more flexible but less precise.</p>
+        </div>
+
+        <div class="interpretation">
+            <h3>Limitations and Future Directions</h3>
+            <ul>
+                <li><strong>Confounding factors:</strong> Diet, stress, sleep, and other lifestyle factors not included in models</li>
+                <li><strong>Measurement error:</strong> Weight fluctuations from hydration, digestion, timing</li>
+                <li><strong>Individual variation:</strong> Responses to training vary widely between individuals</li>
+                <li><strong>Model complexity:</strong> More sophisticated models could incorporate nutrition, sleep, and stress data</li>
+                <li><strong>Longer time horizons:</strong> Effects may manifest over weeks/months beyond modeling window</li>
+            </ul>
+        </div>
+    </section>
+
+    <section class="section">
+        <h2>Technical Implementation</h2>
+
+        <h3>Software Stack</h3>
+        <ul>
+            <li><strong>Stan:</strong> Probabilistic programming language for Bayesian inference</li>
+            <li><strong>CmdStanPy:</strong> Python interface to Stan</li>
+            <li><strong>ArviZ:</strong> Exploratory analysis of Bayesian models</li>
+            <li><strong>Pandas/NumPy:</strong> Data manipulation and numerical computing</li>
+            <li><strong>Matplotlib/Seaborn:</strong> Visualization</li>
+        </ul>
+
+        <h3>Computational Details</h3>
+        <ul>
+            <li><strong>MCMC Sampling:</strong> 4 chains, 500 warmup + 500 sampling iterations</li>
+            <li><strong>Convergence Diagnostics:</strong> R-hat &lt; 1.01, ESS &gt; 400 per chain</li>
+            <li><strong>Caching System:</strong> SHA256-based caching of model fits for reproducibility</li>
+            <li><strong>Sparse GP Approximation:</strong> Inducing points for computational efficiency</li>
+        </ul>
+
+        <h3>Project Structure</h3>
+        <pre style="background: #f5f5f5; padding: 1rem; border-radius: 5px; overflow-x: auto;">
+garmin-analysis-v2/
+├── stan/                    # Stan model files
+│   ├── weight_state_space.stan
+│   ├── weight_gp_crosslagged_*.stan
+│   └── weight_gp_bivariate.stan
+├── src/
+│   ├── models/fit_weight.py    # Model fitting with caching
+│   ├── analysis/analyze_state_space.py
+│   ├── analysis/compare_crosslagged_models.py
+│   └── data/                   # Data loading utilities
+└── output/                  # Analysis results and visualizations
+        </pre>
+    </section>
+
+    <footer>
+        <p><strong>Weight-Fitness Model Analysis Report</strong></p>
+        <p>Generated using Bayesian methods with Garmin health data | Analysis period: 2024-2026</p>
+        <p>Model implementations: Stan state-space and Gaussian Process models | Visualization: Matplotlib/Seaborn</p>
+        <p>Report generated: 2026-02-09 | Project: garmin-analysis-v2</p>
+    </footer>
+</body>
+</html>

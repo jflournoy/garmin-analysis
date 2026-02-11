@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Garmin Analysis Documentation</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f8f9fa;
+        }
+        header {
+            background: linear-gradient(135deg, #2c3e50, #3498db);
+            color: white;
+            padding: 2rem;
+            border-radius: 10px;
+            margin-bottom: 2rem;
+            text-align: center;
+        }
+        h1 {
+            margin: 0;
+        }
+        .subtitle {
+            opacity: 0.9;
+            margin-top: 0.5rem;
+        }
+        .doc-list {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 1rem;
+            margin: 2rem 0;
+        }
+        .doc-card {
+            background: white;
+            border-radius: 8px;
+            padding: 1.5rem;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            transition: transform 0.2s;
+            border-left: 4px solid #3498db;
+        }
+        .doc-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        }
+        .doc-card h3 {
+            margin-top: 0;
+            color: #2c3e50;
+        }
+        .doc-card p {
+            color: #666;
+            font-size: 0.95rem;
+        }
+        .doc-card a {
+            display: inline-block;
+            background: #3498db;
+            color: white;
+            padding: 0.5rem 1rem;
+            border-radius: 4px;
+            text-decoration: none;
+            margin-top: 0.5rem;
+            font-size: 0.9rem;
+        }
+        .doc-card a:hover {
+            background: #2980b9;
+        }
+        footer {
+            text-align: center;
+            margin-top: 3rem;
+            padding-top: 1rem;
+            border-top: 1px solid #ddd;
+            color: #666;
+            font-size: 0.9rem;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>Garmin Analysis Documentation</h1>
+        <div class="subtitle">Bayesian analysis of health and fitness data from Garmin devices</div>
+    </header>
+
+    <div class="doc-list">
+        <div class="doc-card">
+            <h3>Weight-Fitness Model Analysis</h3>
+            <p>Comprehensive report with lush visualizations of Bayesian models analyzing the relationship between workouts and weight. Includes state-space, cross-lagged, and bivariate Gaussian Process models.</p>
+            <a href="weight_fitness_report/index.html">View Full Report →</a>
+        </div>
+
+        <div class="doc-card">
+            <h3>Gaussian Process Model Explanation</h3>
+            <p>Detailed technical documentation of the Bayesian Gaussian Process model used for weight trend analysis, including mathematical foundations, Stan implementation, and practical considerations.</p>
+            <a href="weight_gp_model_explanation.html">View HTML</a>
+        </div>
+
+        <div class="doc-card">
+            <h3>Workout Data Report</h3>
+            <p>Analysis of Garmin workout data quality, aggregation methods, and recommendations for modeling. Focuses on strength training data for cross-lagged time-series analysis.</p>
+            <a href="workout_data_report.html">View HTML</a>
+        </div>
+
+        <div class="doc-card">
+            <h3>Project Guidelines (CLAUDE.md)</h3>
+            <p>Project-specific instructions for AI assistants, including tooling requirements, project structure, and development methodologies.</p>
+            <a href="CLAUDE.html">View HTML</a>
+        </div>
+
+        <div class="doc-card">
+            <h3>Best Practices</h3>
+            <p>Development best practices including TDD workflows, agent patterns, and efficiency guidelines for working with Claude Code.</p>
+            <a href="BEST_PRACTICES.html">View HTML</a>
+        </div>
+
+        <div class="doc-card">
+            <h3>API Setup Guide</h3>
+            <p>Instructions for setting up API integrations and external tool access for the Garmin analysis project.</p>
+            <a href="API_SETUP.html">View HTML</a>
+        </div>
+    </div>
+
+    <footer>
+        <p><strong>Garmin Analysis Project</strong> | Bayesian modeling of health and fitness data</p>
+        <p>Documentation generated: 2026-02-09 | Project: garmin-analysis-v2</p>
+    </footer>
+</body>
+</html>

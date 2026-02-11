@@ -5,6 +5,85 @@ import pandas as pd
 from .plot_zoom import zoom_to_date_range, zoom_to_preset
 
 
+def _compute_stats(samples, y_mean, y_sd):
+    """Compute mean and credible intervals for posterior samples.
+
+    Args:
+        samples: Array of shape (chain, draw, n_obs) or (chain, draw)
+        y_mean: Mean used for standardization (to add back)
+        y_sd: Standard deviation used for standardization (to multiply)
+
+    Returns:
+        Tuple of (mean, lower, upper) arrays of shape (n_obs,) or scalar
+    """
+    mean = samples.mean(axis=(0, 1)) * y_sd + y_mean
+    lower = np.percentile(samples, 2.5, axis=(0, 1)) * y_sd + y_mean
+    upper = np.percentile(samples, 97.5, axis=(0, 1)) * y_sd + y_mean
+    return mean, lower, upper
+
+
+def _select_prediction_var(idata, model_name=None):
+    """Select appropriate prediction variable from InferenceData.
+
+    Checks for variables in order of preference:
+    1. f_total (combined trend + daily)
+    2. f (single GP)
+    3. f_trend or f_daily (individual components)
+
+    Args:
+        idata: ArviZ InferenceData object
+        model_name: Optional model name for error message
+
+    Returns:
+        String variable name
+
+    Raises:
+        ValueError if no prediction variable found
+    """
+    if "f_total" in idata.posterior:
+        return "f_total"
+    elif "f" in idata.posterior:
+        return "f"
+    else:
+        # Try to find any prediction variable
+        possible_vars = ["f_total", "f", "f_trend", "f_daily"]
+        for var in possible_vars:
+            if var in idata.posterior:
+                return var
+    name_part = f" in model {model_name}" if model_name else ""
+    raise ValueError(
+        f"No prediction variable found{name_part}. "
+        f"Available variables: {list(idata.posterior.keys())}"
+    )
+
+
+def _compute_state_space_weight_samples(idata, stan_data):
+    """Compute weight samples for state-space model from components.
+
+    Args:
+        idata: ArviZ InferenceData with state-space model parameters
+        stan_data: Stan data dictionary with day_idx mapping
+
+    Returns:
+        Array of weight samples shape (chain, draw, N_weight)
+    """
+    gamma_samples = idata.posterior['gamma'].values  # shape (chain, draw)
+    fitness_samples = idata.posterior['fitness_stored'].values  # (chain, draw, D)
+    f_gp_samples = idata.posterior['f_gp_stored'].values  # (chain, draw, N_weight)
+
+    # Get day indices for each weight observation (1-indexed in Stan)
+    day_idx = stan_data['day_idx']  # shape (N_weight,)
+    # Convert to 0-indexed for Python
+    day_idx_zero = day_idx - 1
+
+    # Compute weight expectation for each sample
+    # gamma_samples[:, :, None] * fitness_samples[:, :, day_idx_zero] + f_gp_samples
+    gamma_expanded = gamma_samples[:, :, np.newaxis]
+    fitness_selected = fitness_samples[:, :, day_idx_zero]  # (chain, draw, N_weight)
+    weight_samples = gamma_expanded * fitness_selected + f_gp_samples
+    return weight_samples
+
+
 def plot_cyclic_components(
     idata,
     df,
@@ -35,15 +114,9 @@ def plot_cyclic_components(
     f_total_samples = idata.posterior["f_total"].values
 
     # Compute means and credible intervals
-    def compute_stats(samples):
-        mean = samples.mean(axis=(0, 1)) * y_sd + y_mean
-        lower = np.percentile(samples, 2.5, axis=(0, 1)) * y_sd + y_mean
-        upper = np.percentile(samples, 97.5, axis=(0, 1)) * y_sd + y_mean
-        return mean, lower, upper
-
-    f_trend_mean, f_trend_lower, f_trend_upper = compute_stats(f_trend_samples)
-    f_daily_mean, f_daily_lower, f_daily_upper = compute_stats(f_daily_samples)
-    f_total_mean, f_total_lower, f_total_upper = compute_stats(f_total_samples)
+    f_trend_mean, f_trend_lower, f_trend_upper = _compute_stats(f_trend_samples, y_mean, y_sd)
+    f_daily_mean, f_daily_lower, f_daily_upper = _compute_stats(f_daily_samples, y_mean, y_sd)
+    f_total_mean, f_total_lower, f_total_upper = _compute_stats(f_total_samples, y_mean, y_sd)
 
     # Create figure
     n_plots = 1 + show_trend_component + show_daily_component
@@ -692,34 +765,13 @@ def plot_model_full_expectation(
     y_sd = stan_data["_y_sd"]
 
     # Determine which prediction variable to use
-    pred_var = None
-    if "f_total" in idata.posterior:
-        pred_var = "f_total"
-    elif "f" in idata.posterior:
-        pred_var = "f"
-    else:
-        # Try to find any prediction variable
-        possible_vars = ["f_total", "f", "f_trend", "f_daily"]
-        for var in possible_vars:
-            if var in idata.posterior:
-                pred_var = var
-                break
-
-    if pred_var is None:
-        raise ValueError(f"No prediction variable found in model {model_name}. "
-                         f"Available variables: {list(idata.posterior.keys())}")
+    pred_var = _select_prediction_var(idata, model_name=model_name)
 
     # Extract posterior samples for the prediction variable
     f_samples = idata.posterior[pred_var].values
 
     # Compute mean and credible intervals (back-transformed)
-    def compute_stats(samples):
-        mean = samples.mean(axis=(0, 1)) * y_sd + y_mean
-        lower = np.percentile(samples, 2.5, axis=(0, 1)) * y_sd + y_mean
-        upper = np.percentile(samples, 97.5, axis=(0, 1)) * y_sd + y_mean
-        return mean, lower, upper
-
-    f_mean, f_lower, f_upper = compute_stats(f_samples)
+    f_mean, f_lower, f_upper = _compute_stats(f_samples, y_mean, y_sd)
 
     # Create figure
     fig, ax = plt.subplots(figsize=(12, 6))
@@ -1169,6 +1221,192 @@ def plot_weekly_zoomed_predictions(
 
     return fig
 
+def plot_state_space_expectations(
+    idata,
+    df_weight,
+    df_intensity,
+    stan_data,
+    model_name: str,
+    output_path: str = None,
+    show_ci: bool = True,
+):
+    """Plot state-space model expectations for fitness and weight with data overlays.
+
+    Creates a 2-panel figure:
+    1. Latent fitness state over time with workout intensity bars
+    2. Weight predictions with weight observations
+
+    Args:
+        idata: ArviZ InferenceData from state-space model fit
+        df_weight: DataFrame with weight observations (columns: timestamp, weight_lbs)
+        df_intensity: DataFrame with daily intensity (columns: date, intensity)
+        stan_data: Stan data dictionary with scaling parameters
+        model_name: Name of model for plot title
+        output_path: Path to save plot (optional)
+        show_ci: Whether to show 95% credible intervals
+
+    Returns:
+        matplotlib Figure object
+    """
+    # Back-transform scaling parameters
+    y_mean = stan_data.get("_y_mean", 0.0)
+    y_sd = stan_data.get("_y_sd", 1.0)
+
+    # Create figure with two subplots
+    fig, axes = plt.subplots(2, 1, figsize=(14, 10))
+
+    # --- Panel 1: Fitness state ---
+    ax_fitness = axes[0]
+
+    # Check for fitness variable names (Stan stores as 'fitness_stored' or 'fitness')
+    fitness_var = None
+    for var in ['fitness_stored', 'fitness']:
+        if var in idata.posterior:
+            fitness_var = var
+            break
+
+    if fitness_var is None:
+        raise ValueError(
+            "No fitness variable found in model posterior. "
+            f"Available variables: {list(idata.posterior.keys())}"
+        )
+
+    # Extract fitness samples (shape: chain, draw, D)
+    fitness_samples = idata.posterior[fitness_var].values
+
+    # Compute mean and credible intervals across chains and draws
+    fitness_mean = fitness_samples.mean(axis=(0, 1))
+    if show_ci:
+        fitness_lower = np.percentile(fitness_samples, 2.5, axis=(0, 1))
+        fitness_upper = np.percentile(fitness_samples, 97.5, axis=(0, 1))
+
+    # Determine correct date range matching fitness dimension D
+    D = fitness_samples.shape[2]
+
+    # Validate D matches Stan data if available
+    if 'D' in stan_data:
+        if D != stan_data['D']:
+            raise ValueError(
+                f"Fitness dimension mismatch: fitness_samples.shape[2]={D}, "
+                f"stan_data['D']={stan_data['D']}. Ensure consistent data preparation."
+            )
+
+    # Compute start date as min of normalized dates (without time components)
+    # to match the date range used in prepare_state_space_data
+    weight_dates = df_weight['timestamp'].dt.normalize()  # keep only date part
+    intensity_dates = df_intensity['date'].dt.normalize()
+    start_date = min(weight_dates.min(), intensity_dates.min())
+    days = pd.date_range(start=start_date, periods=D, freq='D')
+
+    # Get intensity values for the full date range (unstandardize if needed)
+    if 'intensity' in stan_data:
+        intensity_mean = stan_data.get('intensity_mean', 0.0)
+        intensity_std = stan_data.get('intensity_std', 1.0)
+        intensity_values = stan_data['intensity'] * intensity_std + intensity_mean
+        # Ensure length matches D
+        if len(intensity_values) != D:
+            raise ValueError(
+                f"Intensity array length mismatch: intensity length={len(intensity_values)}, D={D}. "
+                "Check stan_data['intensity'] alignment."
+            )
+    else:
+        # Fallback: map df_intensity to full date range, fill missing with 0
+        intensity_df = df_intensity.set_index('date').reindex(days, fill_value=0.0)
+        intensity_values = intensity_df['intensity'].values
+        # Should already match D due to reindex, but verify
+        if len(intensity_values) != D:
+            raise ValueError(
+                f"Intensity values length mismatch after reindex: {len(intensity_values)} != {D}"
+            )
+
+    # Validate fitness_mean length matches D (should already hold)
+    if len(fitness_mean) != D:
+        raise ValueError(
+            f"Fitness mean length mismatch: {len(fitness_mean)} != {D}. "
+            "Check fitness_samples shape."
+        )
+
+    # Plot fitness mean
+    ax_fitness.plot(days, fitness_mean, 'b-', linewidth=2, label='Fitness state (mean)')
+
+    # Plot credible interval
+    if show_ci:
+        ax_fitness.fill_between(
+            days, fitness_lower, fitness_upper,
+            alpha=0.3, color='blue', label='95% CI'
+        )
+
+    # Plot intensity bars on secondary y-axis
+    ax_intensity = ax_fitness.twinx()
+    ax_intensity.bar(
+        days, intensity_values,
+        width=1.0, alpha=0.3, color='orange', label='Workout intensity'
+    )
+
+    # Labels and titles for fitness panel
+    ax_fitness.set_xlabel('Date')
+    ax_fitness.set_ylabel('Fitness (standardized)', color='blue')
+    ax_fitness.tick_params(axis='y', labelcolor='blue')
+    ax_fitness.set_title(f'Latent Fitness State - {model_name}')
+    ax_fitness.legend(loc='upper left')
+    ax_fitness.grid(True, alpha=0.3)
+
+    ax_intensity.set_ylabel('Workout intensity', color='orange')
+    ax_intensity.tick_params(axis='y', labelcolor='orange')
+    ax_intensity.legend(loc='upper right')
+
+    # --- Panel 2: Weight expectations ---
+    ax_weight = axes[1]
+
+    # Check if this is a state-space model
+    if 'fitness_stored' in idata.posterior and 'f_gp_stored' in idata.posterior:
+        # State-space model: compute weight expectation from components
+        weight_samples = _compute_state_space_weight_samples(idata, stan_data)
+
+    else:
+        # Standard GP model: use existing prediction variable
+        pred_var = _select_prediction_var(idata, model_name=model_name)
+        weight_samples = idata.posterior[pred_var].values
+
+    # Compute mean and credible intervals (back-transformed)
+    f_mean, f_lower, f_upper = _compute_stats(weight_samples, y_mean, y_sd)
+
+    # Plot weight observations
+    ax_weight.scatter(
+        df_weight['timestamp'], df_weight['weight_lbs'],
+        alpha=0.5, s=20, label='Observations', color='gray'
+    )
+
+    # Plot mean prediction
+    ax_weight.plot(df_weight['timestamp'], f_mean, 'b-', linewidth=2,
+                   label=f'{model_name} prediction')
+
+    # Plot credible interval if requested
+    if show_ci:
+        ax_weight.fill_between(
+            df_weight['timestamp'], f_lower, f_upper,
+            alpha=0.3, color='blue', label='95% CI'
+        )
+
+    # Add horizontal line at mean weight for reference
+    ax_weight.axhline(y=y_mean, color='k', linestyle='--', alpha=0.5,
+                      label=f'Mean weight ({y_mean:.1f} lbs)')
+
+    ax_weight.set_xlabel('Date')
+    ax_weight.set_ylabel('Weight (lbs)')
+    ax_weight.set_title(f'Weight Expectations - {model_name}')
+    ax_weight.legend()
+    ax_weight.grid(True, alpha=0.3)
+
+    # Adjust layout
+    plt.tight_layout()
+
+    if output_path:
+        plt.savefig(output_path, dpi=150, bbox_inches='tight')
+        print(f'Saved state-space expectations plot for {model_name} to {output_path}')
+
+    return fig
+
 
 if __name__ == "__main__":
     # Example usage
@@ -1182,7 +1420,8 @@ if __name__ == "__main__":
     print("      plot_models_comparison_all,")
     print("      plot_model_full_expectation,")
     print("      plot_model_predictions,")
-    print("      plot_weekly_zoomed_predictions")
+    print("      plot_weekly_zoomed_predictions,")
+    print("      plot_state_space_expectations")
     print("  )")
     print()
     print("Functions:")
@@ -1194,3 +1433,4 @@ if __name__ == "__main__":
     print("  plot_model_full_expectation() - Plot full prediction for any model")
     print("  plot_model_predictions() - Plot predictions at unobserved time points")
     print("  plot_weekly_zoomed_predictions() - Plot hourly predictions zoomed into a specific week")
+    print("  plot_state_space_expectations() - Plot fitness and weight expectations with data overlays")

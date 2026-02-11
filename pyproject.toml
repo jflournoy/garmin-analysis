@@ -25,7 +25,11 @@ dev = [
     "pytest-cov>=4.0.0",
 ]
 
+[project.scripts]
+generate-docs = "_generate_docs:main"
+
 [tool.uv]
+package = true
 dev-dependencies = [
     "pytest>=8.0.0",
     "pytest-cov>=4.0.0",
