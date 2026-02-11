@@ -368,6 +368,15 @@ def plot_spline_daily_pattern(
     # We need y_sd to convert daily component to original units
     y_sd = stan_data["_y_sd"]
 
+    # Get scaled weight data - handle different model types
+    # Original spline model uses 'y', state-space model uses 'y_weight'
+    if "y" in stan_data:
+        y_scaled = np.array(stan_data["y"])  # Already centered and scaled
+    elif "y_weight" in stan_data:
+        y_scaled = np.array(stan_data["y_weight"])  # Already centered and scaled
+    else:
+        raise ValueError("Stan data must include either 'y' or 'y_weight' for weight data")
+
     # Reshape for easier processing
     n_chains, n_draws, _ = a_sin_samples.shape
     n_samples = n_chains * n_draws
@@ -419,16 +428,41 @@ def plot_spline_daily_pattern(
     ax = axes[1]
 
     # Extract trend component and compute residuals
-    if "f_trend" not in idata.posterior:
-        raise ValueError("Spline model posterior must include f_trend for residual calculation")
+    # Handle different model types: original spline model has f_trend, state-space model has f_gp_stored
+    if "f_trend" in idata.posterior:
+        # Original spline model
+        f_trend_samples = idata.posterior["f_trend"].values  # shape: (chain, draw, obs)
+        f_trend_mean = f_trend_samples.mean(axis=(0, 1))  # Mean across chains and draws
+        residuals_scaled = y_scaled - f_trend_mean
+    elif "f_gp_stored" in idata.posterior and "fitness_stored" in idata.posterior and "gamma" in idata.posterior:
+        # State-space model: need to compute fitness effect + GP trend
+        # Get components
+        fitness_samples = idata.posterior['fitness_stored'].values  # (chain, draw, D)
+        f_gp_samples = idata.posterior['f_gp_stored'].values  # (chain, draw, N_weight)
+        gamma_samples = idata.posterior['gamma'].values  # (chain, draw)
 
-    # Get scaled raw data and trend component
-    y_scaled = np.array(stan_data["y"])  # Already centered and scaled, ensure numpy array
-    f_trend_samples = idata.posterior["f_trend"].values  # shape: (chain, draw, obs)
-    f_trend_mean = f_trend_samples.mean(axis=(0, 1))  # Mean across chains and draws
+        # Map fitness to weight observation times via day_idx
+        day_idx = stan_data['day_idx']  # length N_weight, values 1..D
+        D = fitness_samples.shape[2]
+        N_weight = len(day_idx)
 
-    # Compute residuals: raw data minus trend component (both in scaled space)
-    residuals_scaled = y_scaled - f_trend_mean
+        # Compute fitness effect at weight observation times
+        fitness_effect_samples = np.zeros_like(f_gp_samples)
+        for chain in range(fitness_samples.shape[0]):
+            for draw in range(fitness_samples.shape[1]):
+                fitness_effect_samples[chain, draw, :] = gamma_samples[chain, draw] * fitness_samples[chain, draw, day_idx - 1]
+
+        # Total non-daily component = fitness_effect + f_gp
+        non_daily_samples = fitness_effect_samples + f_gp_samples
+        non_daily_mean = non_daily_samples.mean(axis=(0, 1))
+
+        residuals_scaled = y_scaled - non_daily_mean
+    else:
+        raise ValueError(
+            "Spline model posterior must include either f_trend (original model) or "
+            "f_gp_stored + fitness_stored + gamma (state-space model) for residual calculation"
+        )
+
     residuals_original = residuals_scaled * y_sd  # Convert to original units (lbs)
 
     # Plot detrended data residuals
@@ -1340,7 +1374,13 @@ def plot_state_space_expectations(
     ax_intensity = ax_fitness.twinx()
     ax_intensity.bar(
         days, intensity_values,
-        width=1.0, alpha=0.3, color='orange', label='Workout intensity'
+        width=1.0, alpha=0.6, color='orange', edgecolor='orange', linewidth=0.5,
+        label='Workout intensity (bars)'
+    )
+    # Add intensity line trend
+    ax_intensity.plot(
+        days, intensity_values, 'k-', linewidth=1, alpha=0.7,
+        label='Workout intensity (line)'
     )
 
     # Labels and titles for fitness panel
@@ -1404,6 +1444,516 @@ def plot_state_space_expectations(
     if output_path:
         plt.savefig(output_path, dpi=150, bbox_inches='tight')
         print(f'Saved state-space expectations plot for {model_name} to {output_path}')
+
+    return fig
+
+
+def plot_state_space_expectations_with_activity_breakdown(
+    idata,
+    df_weight,
+    df_intensity,
+    stan_data,
+    model_name: str,
+    df_intensity_by_activity: pd.DataFrame = None,
+    output_path: str = None,
+    show_ci: bool = True,
+):
+    """Plot state-space model expectations with activity type breakdown.
+
+    Creates a 2-panel figure:
+    1. Latent fitness state over time with stacked workout intensity bars by activity type
+    2. Weight predictions with weight observations
+
+    Args:
+        idata: ArviZ InferenceData from state-space model fit
+        df_weight: DataFrame with weight observations (columns: timestamp, weight_lbs)
+        df_intensity: DataFrame with daily total intensity (columns: date, intensity)
+        stan_data: Stan data dictionary with scaling parameters
+        model_name: Name of model for plot title
+        df_intensity_by_activity: Optional DataFrame with intensity by activity type
+            (columns: 'date', plus columns for each activity type)
+        output_path: Path to save plot (optional)
+        show_ci: Whether to show 95% credible intervals
+
+    Returns:
+        matplotlib Figure object
+    """
+    # Back-transform scaling parameters
+    y_mean = stan_data.get("_y_mean", 0.0)
+    y_sd = stan_data.get("_y_sd", 1.0)
+
+    # Create figure with two subplots
+    fig, axes = plt.subplots(2, 1, figsize=(14, 10))
+
+    # --- Panel 1: Fitness state ---
+    ax_fitness = axes[0]
+
+    # Check for fitness variable names (Stan stores as 'fitness_stored' or 'fitness')
+    fitness_var = None
+    for var in ['fitness_stored', 'fitness']:
+        if var in idata.posterior:
+            fitness_var = var
+            break
+
+    if fitness_var is None:
+        raise ValueError(
+            "No fitness variable found in model posterior. "
+            f"Available variables: {list(idata.posterior.keys())}"
+        )
+
+    # Extract fitness samples (shape: chain, draw, D)
+    fitness_samples = idata.posterior[fitness_var].values
+
+    # Compute mean and credible intervals across chains and draws
+    fitness_mean = fitness_samples.mean(axis=(0, 1))
+    if show_ci:
+        fitness_lower = np.percentile(fitness_samples, 2.5, axis=(0, 1))
+        fitness_upper = np.percentile(fitness_samples, 97.5, axis=(0, 1))
+
+    # Determine correct date range matching fitness dimension D
+    D = fitness_samples.shape[2]
+
+    # Validate D matches Stan data if available
+    if 'D' in stan_data:
+        if D != stan_data['D']:
+            raise ValueError(
+                f"Fitness dimension mismatch: fitness_samples.shape[2]={D}, "
+                f"stan_data['D']={stan_data['D']}. Ensure consistent data preparation."
+            )
+
+    # Compute start date as min of normalized dates (without time components)
+    # to match the date range used in prepare_state_space_data
+    weight_dates = df_weight['timestamp'].dt.normalize()  # keep only date part
+    intensity_dates = df_intensity['date'].dt.normalize()
+    start_date = min(weight_dates.min(), intensity_dates.min())
+    days = pd.date_range(start=start_date, periods=D, freq='D')
+
+    # Get intensity values for the full date range (unstandardize if needed)
+    if 'intensity' in stan_data:
+        intensity_mean = stan_data.get('intensity_mean', 0.0)
+        intensity_std = stan_data.get('intensity_std', 1.0)
+        intensity_values = stan_data['intensity'] * intensity_std + intensity_mean
+        # Ensure length matches D
+        if len(intensity_values) != D:
+            raise ValueError(
+                f"Intensity array length mismatch: intensity length={len(intensity_values)}, D={D}. "
+                "Check stan_data['intensity'] alignment."
+            )
+    else:
+        # Fallback: map df_intensity to full date range, fill missing with 0
+        intensity_df = df_intensity.set_index('date').reindex(days, fill_value=0.0)
+        intensity_values = intensity_df['intensity'].values
+        # Should already match D due to reindex, but verify
+        if len(intensity_values) != D:
+            raise ValueError(
+                f"Intensity values length mismatch after reindex: {len(intensity_values)} != {D}"
+            )
+
+    # Validate fitness_mean length matches D (should already hold)
+    if len(fitness_mean) != D:
+        raise ValueError(
+            f"Fitness mean length mismatch: {len(fitness_mean)} != {D}. "
+            "Check fitness_samples shape."
+        )
+
+    # Plot fitness mean
+    ax_fitness.plot(days, fitness_mean, 'b-', linewidth=2, label='Fitness state (mean)')
+
+    # Plot credible interval
+    if show_ci:
+        ax_fitness.fill_between(
+            days, fitness_lower, fitness_upper,
+            alpha=0.3, color='blue', label='95% CI'
+        )
+
+    # Plot intensity bars on secondary y-axis
+    ax_intensity = ax_fitness.twinx()
+
+    if df_intensity_by_activity is not None:
+        # Map activity intensity to full date range
+        activity_df = df_intensity_by_activity.set_index('date').reindex(days, fill_value=0.0)
+        # Identify activity columns (excluding 'date' which is now index)
+        activity_cols = [col for col in activity_df.columns if col != 'intensity']  # exclude total intensity column if present
+
+        if len(activity_cols) > 0:
+            # Plot stacked bars
+            bottom = np.zeros(len(days))
+            colors = plt.cm.Set3(np.linspace(0, 1, len(activity_cols)))
+            for i, activity in enumerate(activity_cols):
+                ax_intensity.bar(
+                    days, activity_df[activity].values,
+                    width=1.0, alpha=0.6, color=colors[i],
+                    bottom=bottom, label=activity
+                )
+                bottom += activity_df[activity].values
+        else:
+            # Fallback to total intensity
+            ax_intensity.bar(
+                days, intensity_values,
+                width=1.0, alpha=0.3, color='orange', label='Workout intensity'
+            )
+    else:
+        # Plot total intensity bars
+        ax_intensity.bar(
+            days, intensity_values,
+            width=1.0, alpha=0.3, color='orange', label='Workout intensity'
+        )
+
+    # Labels and titles for fitness panel
+    ax_fitness.set_xlabel('Date')
+    ax_fitness.set_ylabel('Fitness (standardized)', color='blue')
+    ax_fitness.tick_params(axis='y', labelcolor='blue')
+    ax_fitness.set_title(f'Latent Fitness State - {model_name}')
+    ax_fitness.legend(loc='upper left')
+    ax_fitness.grid(True, alpha=0.3)
+
+    ax_intensity.set_ylabel('Workout intensity', color='orange')
+    ax_intensity.tick_params(axis='y', labelcolor='orange')
+    ax_intensity.legend(loc='upper right')
+
+    # --- Panel 2: Weight expectations ---
+    ax_weight = axes[1]
+
+    # Check if this is a state-space model
+    if 'fitness_stored' in idata.posterior and 'f_gp_stored' in idata.posterior:
+        # State-space model: compute weight expectation from components
+        weight_samples = _compute_state_space_weight_samples(idata, stan_data)
+
+    else:
+        # Standard GP model: use existing prediction variable
+        pred_var = _select_prediction_var(idata, model_name=model_name)
+        weight_samples = idata.posterior[pred_var].values
+
+    # Compute mean and credible intervals (back-transformed)
+    f_mean, f_lower, f_upper = _compute_stats(weight_samples, y_mean, y_sd)
+
+    # Plot weight observations
+    ax_weight.scatter(
+        df_weight['timestamp'], df_weight['weight_lbs'],
+        alpha=0.5, s=20, label='Observations', color='gray'
+    )
+
+    # Plot mean prediction
+    ax_weight.plot(df_weight['timestamp'], f_mean, 'b-', linewidth=2,
+                   label=f'{model_name} prediction')
+
+    # Plot credible interval if requested
+    if show_ci:
+        ax_weight.fill_between(
+            df_weight['timestamp'], f_lower, f_upper,
+            alpha=0.3, color='blue', label='95% CI'
+        )
+
+    # Add horizontal line at mean weight for reference
+    ax_weight.axhline(y=y_mean, color='k', linestyle='--', alpha=0.5,
+                      label=f'Mean weight ({y_mean:.1f} lbs)')
+
+    ax_weight.set_xlabel('Date')
+    ax_weight.set_ylabel('Weight (lbs)')
+    ax_weight.set_title(f'Weight Expectations - {model_name}')
+    ax_weight.legend()
+    ax_weight.grid(True, alpha=0.3)
+
+    # Adjust layout
+    plt.tight_layout()
+
+    if output_path:
+        plt.savefig(output_path, dpi=150, bbox_inches='tight')
+        print(f'Saved state-space expectations plot with activity breakdown for {model_name} to {output_path}')
+
+    return fig
+
+
+def plot_state_space_spline_decomposition(
+    idata,
+    df_weight,
+    df_intensity,
+    stan_data,
+    model_name: str,
+    output_path: str = None,
+    show_ci: bool = True,
+):
+    """Plot comprehensive decomposition of state-space model with daily spline.
+
+    Creates a multi-panel figure showing:
+    1. Weight decomposition into components (fitness effect, GP trend, daily spline, residual)
+    2. Within-day pattern (hour-of-day effect from Fourier spline)
+    3. Latent fitness and impulse states over time
+    4. Workout intensity bars
+
+    Args:
+        idata: ArviZ InferenceData from state-space spline model fit
+        df_weight: DataFrame with weight observations (columns: timestamp, weight_lbs)
+        df_intensity: DataFrame with daily intensity (columns: date, intensity)
+        stan_data: Stan data dictionary with scaling parameters
+        model_name: Name of model for plot title
+        output_path: Path to save plot (optional)
+        show_ci: Whether to show 95% credible intervals
+
+    Returns:
+        matplotlib Figure object
+    """
+    # Back-transform scaling parameters
+    y_mean = stan_data.get("_y_mean", 0.0)
+    y_sd = stan_data.get("_y_sd", 1.0)
+    intensity_mean = stan_data.get("intensity_mean", 0.0)
+    intensity_std = stan_data.get("intensity_std", 1.0)
+
+    # Create figure with 2x2 subplots
+    fig, axes = plt.subplots(2, 2, figsize=(16, 12))
+    ax_weight_decomp = axes[0, 0]
+    ax_daily_pattern = axes[0, 1]
+    ax_fitness = axes[1, 0]
+    ax_impulse = axes[1, 1]
+
+    # --- Panel 1: Weight decomposition ---
+    # Extract components
+    if 'fitness_stored' not in idata.posterior:
+        raise ValueError("Missing fitness_stored in posterior")
+    if 'f_gp_stored' not in idata.posterior:
+        raise ValueError("Missing f_gp_stored in posterior")
+    if 'f_daily_stored' not in idata.posterior:
+        raise ValueError("Missing f_daily_stored in posterior - model may not include daily spline")
+
+    # Get gamma parameter (weight effect per fitness)
+    if 'gamma' not in idata.posterior:
+        raise ValueError("Missing gamma parameter in posterior")
+
+    gamma_samples = idata.posterior['gamma'].values  # shape (chain, draw)
+    gamma_mean = gamma_samples.mean()
+
+    # Extract component samples
+    fitness_samples = idata.posterior['fitness_stored'].values  # (chain, draw, D)
+    f_gp_samples = idata.posterior['f_gp_stored'].values  # (chain, draw, N_weight)
+    f_daily_samples = idata.posterior['f_daily_stored'].values  # (chain, draw, N_weight)
+
+    # Map fitness to weight observation times via day_idx
+    day_idx = stan_data['day_idx']  # length N_weight, values 1..D
+    D = fitness_samples.shape[2]
+    N_weight = len(day_idx)
+
+    # Validate dimensions
+    if fitness_samples.shape[2] != D:
+        raise ValueError(f"fitness_samples.shape[2] ({fitness_samples.shape[2]}) != D ({D})")
+    if f_gp_samples.shape[2] != N_weight:
+        raise ValueError(f"f_gp_samples.shape[2] ({f_gp_samples.shape[2]}) != N_weight ({N_weight})")
+    if f_daily_samples.shape[2] != N_weight:
+        raise ValueError(f"f_daily_samples.shape[2] ({f_daily_samples.shape[2]}) != N_weight ({N_weight})")
+    if day_idx.max() > D:
+        raise ValueError(f"day_idx max ({day_idx.max()}) > D ({D})")
+    if day_idx.min() < 1:
+        raise ValueError(f"day_idx min ({day_idx.min()}) < 1")
+
+    # Compute fitness effect at weight observation times
+    # fitness_effect = gamma * fitness[day_idx]
+    fitness_effect_samples = np.zeros_like(f_gp_samples)
+    for chain in range(fitness_samples.shape[0]):
+        for draw in range(fitness_samples.shape[1]):
+            fitness_effect_samples[chain, draw, :] = gamma_samples[chain, draw] * fitness_samples[chain, draw, day_idx - 1]
+
+    # Total prediction = fitness_effect + f_gp + f_daily
+    total_samples = fitness_effect_samples + f_gp_samples + f_daily_samples
+
+    # Compute means and credible intervals for each component (back-transformed)
+    def back_transform(samples):
+        mean = samples.mean(axis=(0, 1)) * y_sd + y_mean
+        lower = np.percentile(samples, 2.5, axis=(0, 1)) * y_sd + y_mean
+        upper = np.percentile(samples, 97.5, axis=(0, 1)) * y_sd + y_mean
+        return mean, lower, upper
+
+    total_mean, total_lower, total_upper = back_transform(total_samples)
+    fitness_mean_bt, fitness_lower, fitness_upper = back_transform(fitness_effect_samples)
+    gp_mean_bt, gp_lower, gp_upper = back_transform(f_gp_samples)
+    daily_mean_bt, daily_lower, daily_upper = back_transform(f_daily_samples)
+
+    # Get observation residuals (observed - predicted)
+    obs_weight = df_weight['weight_lbs'].values
+    residuals = obs_weight - total_mean
+
+    # Plot stacked area or line decomposition
+    timestamps = df_weight['timestamp']
+    ax_weight_decomp.plot(timestamps, total_mean, 'k-', linewidth=2, label='Total prediction')
+    if show_ci:
+        ax_weight_decomp.fill_between(timestamps, total_lower, total_upper, alpha=0.2, color='gray', label='95% CI total')
+
+    # Plot components as stacked or overlaid
+    ax_weight_decomp.plot(timestamps, fitness_mean_bt, 'r-', linewidth=1.5, alpha=0.7, label='Fitness effect')
+    ax_weight_decomp.plot(timestamps, gp_mean_bt, 'g-', linewidth=1.5, alpha=0.7, label='GP trend')
+    ax_weight_decomp.plot(timestamps, daily_mean_bt, 'b-', linewidth=1.5, alpha=0.7, label='Daily spline')
+
+    # Plot observations
+    ax_weight_decomp.scatter(timestamps, obs_weight, alpha=0.3, s=10, color='gray', label='Observations')
+
+    # Plot residuals
+    ax_weight_decomp.scatter(timestamps, obs_weight - residuals, alpha=0.5, s=5, color='purple', label='Residuals (offset)')
+
+    ax_weight_decomp.set_xlabel('Date')
+    ax_weight_decomp.set_ylabel('Weight (lbs)')
+    ax_weight_decomp.set_title(f'Weight Decomposition - {model_name}')
+    ax_weight_decomp.legend(loc='upper left', fontsize='small')
+    ax_weight_decomp.grid(True, alpha=0.3)
+
+    # --- Panel 2: Within-day pattern ---
+    # Create hour-of-day grid for visualization
+    hour_grid = np.linspace(0, 24, 100)
+    # Extract Fourier coefficients
+    K = stan_data.get('K', 2)
+    a_sin_samples = idata.posterior.get('a_sin', None)
+    a_cos_samples = idata.posterior.get('a_cos', None)
+
+    if a_sin_samples is not None and a_cos_samples is not None:
+        # Convert to numpy arrays for easier indexing
+        a_sin_values = a_sin_samples.values
+        a_cos_values = a_cos_samples.values
+
+        # Validate Fourier coefficient dimensions
+        if a_sin_values.shape[2] != K:
+            raise ValueError(
+                f"a_sin dimension mismatch: a_sin_values.shape[2]={a_sin_values.shape[2]}, K={K}. "
+                "Ensure stan_data K matches model output."
+            )
+        if a_cos_values.shape[2] != K:
+            raise ValueError(
+                f"a_cos dimension mismatch: a_cos_values.shape[2]={a_cos_values.shape[2]}, K={K}. "
+                "Ensure stan_data K matches model output."
+            )
+
+        # Compute daily pattern samples
+        daily_pattern_samples = []
+        for chain in range(a_sin_values.shape[0]):
+            for draw in range(a_sin_values.shape[1]):
+                pattern = np.zeros(len(hour_grid))
+                for k in range(K):
+                    freq = 2.0 * np.pi * (k + 1)
+                    hour_scaled = hour_grid / 24.0
+                    pattern += (a_sin_values[chain, draw, k] * np.sin(freq * hour_scaled) +
+                                a_cos_values[chain, draw, k] * np.cos(freq * hour_scaled))
+                daily_pattern_samples.append(pattern)
+
+        daily_pattern_samples = np.array(daily_pattern_samples)  # (n_samples, 100)
+        daily_pattern_mean = daily_pattern_samples.mean(axis=0) * y_sd  # back-transform to lbs
+        daily_pattern_lower = np.percentile(daily_pattern_samples, 2.5, axis=0) * y_sd
+        daily_pattern_upper = np.percentile(daily_pattern_samples, 97.5, axis=0) * y_sd
+
+        ax_daily_pattern.plot(hour_grid, daily_pattern_mean, 'b-', linewidth=2, label='Daily pattern')
+        if show_ci:
+            ax_daily_pattern.fill_between(hour_grid, daily_pattern_lower, daily_pattern_upper,
+                                         alpha=0.3, color='blue', label='95% CI')
+
+        # Add actual daily component values from observations
+        hour_of_day = stan_data.get('hour_of_day', None)
+        if hour_of_day is not None:
+            # Validate dimension match
+            if len(hour_of_day) != len(daily_mean_bt):
+                raise ValueError(
+                    f"hour_of_day length ({len(hour_of_day)}) does not match "
+                    f"daily_mean_bt length ({len(daily_mean_bt)})"
+                )
+            # Get unique hour values (bin)
+            ax_daily_pattern.scatter(hour_of_day, daily_mean_bt, alpha=0.3, s=10, color='red',
+                                   label='Observed daily component')
+
+        ax_daily_pattern.set_xlabel('Hour of day')
+        ax_daily_pattern.set_ylabel('Weight effect (lbs)')
+        ax_daily_pattern.set_title('Within-Day Pattern (Fourier Spline)')
+        ax_daily_pattern.legend()
+        ax_daily_pattern.grid(True, alpha=0.3)
+        ax_daily_pattern.set_xlim(0, 24)
+    else:
+        ax_daily_pattern.text(0.5, 0.5, 'Fourier coefficients not available',
+                            ha='center', va='center', transform=ax_daily_pattern.transAxes)
+        ax_daily_pattern.set_title('Within-Day Pattern (data not available)')
+
+    # --- Panel 3: Fitness state ---
+    # Compute fitness mean and CI
+    fitness_mean = fitness_samples.mean(axis=(0, 1))
+    if show_ci:
+        fitness_lower = np.percentile(fitness_samples, 2.5, axis=(0, 1))
+        fitness_upper = np.percentile(fitness_samples, 97.5, axis=(0, 1))
+
+    # Create date range for fitness states
+    weight_dates = df_weight['timestamp'].dt.normalize()
+    intensity_dates = df_intensity['date'].dt.normalize()
+    start_date = min(weight_dates.min(), intensity_dates.min())
+    days = pd.date_range(start=start_date, periods=D, freq='D')
+
+    # Get intensity values
+    if 'intensity' in stan_data:
+        intensity_values = stan_data['intensity'] * intensity_std + intensity_mean
+        if len(intensity_values) != D:
+            # Ensure exact length D by truncating or padding with zeros
+            if len(intensity_values) > D:
+                intensity_values = intensity_values[:D]
+                print(f"WARNING: intensity array truncated from {len(intensity_values)} to {D}")
+            else:
+                # Pad with zeros at the end
+                pad_length = D - len(intensity_values)
+                intensity_values = np.pad(intensity_values, (0, pad_length), mode='constant', constant_values=0.0)
+                print(f"WARNING: intensity array padded with zeros from {len(intensity_values)-pad_length} to {D}")
+    else:
+        intensity_df = df_intensity.set_index('date').reindex(days, fill_value=0.0)
+        intensity_values = intensity_df['intensity'].values
+
+    # Plot fitness
+    ax_fitness.plot(days, fitness_mean, 'b-', linewidth=2, label='Fitness state')
+    if show_ci:
+        ax_fitness.fill_between(days, fitness_lower, fitness_upper, alpha=0.3, color='blue', label='95% CI')
+
+    # Add intensity bars
+    ax_intensity_twin = ax_fitness.twinx()
+    ax_intensity_twin.bar(days, intensity_values, width=1.0, alpha=0.3, color='orange', label='Workout intensity')
+
+    ax_fitness.set_xlabel('Date')
+    ax_fitness.set_ylabel('Fitness (standardized)', color='blue')
+    ax_fitness.tick_params(axis='y', labelcolor='blue')
+    ax_fitness.set_title('Latent Fitness State')
+    ax_fitness.legend(loc='upper left')
+    ax_fitness.grid(True, alpha=0.3)
+
+    ax_intensity_twin.set_ylabel('Workout intensity', color='orange')
+    ax_intensity_twin.tick_params(axis='y', labelcolor='orange')
+    ax_intensity_twin.legend(loc='upper right')
+
+    # --- Panel 4: Impulse state ---
+    if 'impulse_stored' in idata.posterior:
+        impulse_samples = idata.posterior['impulse_stored'].values
+        impulse_mean = impulse_samples.mean(axis=(0, 1))
+        if show_ci:
+            impulse_lower = np.percentile(impulse_samples, 2.5, axis=(0, 1))
+            impulse_upper = np.percentile(impulse_samples, 97.5, axis=(0, 1))
+
+        ax_impulse.plot(days, impulse_mean, 'r-', linewidth=2, label='Impulse state')
+        if show_ci:
+            ax_impulse.fill_between(days, impulse_lower, impulse_upper, alpha=0.3, color='red', label='95% CI')
+
+        # Add intensity bars (same as above)
+        ax_impulse_twin = ax_impulse.twinx()
+        ax_impulse_twin.bar(days, intensity_values, width=1.0, alpha=0.3, color='orange', label='Workout intensity')
+
+        ax_impulse.set_xlabel('Date')
+        ax_impulse.set_ylabel('Impulse (standardized)', color='red')
+        ax_impulse.tick_params(axis='y', labelcolor='red')
+        ax_impulse.set_title('Impulse State (Workout Accumulation)')
+        ax_impulse.legend(loc='upper left')
+        ax_impulse.grid(True, alpha=0.3)
+
+        ax_impulse_twin.set_ylabel('Workout intensity', color='orange')
+        ax_impulse_twin.tick_params(axis='y', labelcolor='orange')
+        ax_impulse_twin.legend(loc='upper right')
+    else:
+        ax_impulse.text(0.5, 0.5, 'Impulse state not available',
+                       ha='center', va='center', transform=ax_impulse.transAxes)
+        ax_impulse.set_title('Impulse State (not available)')
+
+    # Add overall title
+    fig.suptitle(f'State-Space Model with Daily Spline: {model_name}', fontsize=16, y=1.02)
+
+    # Adjust layout
+    plt.tight_layout()
+
+    if output_path:
+        plt.savefig(output_path, dpi=150, bbox_inches='tight')
+        print(f'Saved state-space spline decomposition plot to {output_path}')
 
     return fig
 
