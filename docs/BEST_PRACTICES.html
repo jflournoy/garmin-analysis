@@ -1,0 +1,660 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Bayesian Gaussian Process Model for Weight Analysis</title>
+
+    <!-- MathJax Configuration -->
+    <script>
+    MathJax = {
+        tex: {
+            inlineMath: [['$', '$'], ['\\(', '\\)']],
+            displayMath: [['$$', '$$'], ['\\[', '\\]']],
+            processEscapes: true,
+            processEnvironments: true
+        },
+        options: {
+            skipHtmlTags: ['script', 'noscript', 'style', 'textarea', 'pre']
+        }
+    };
+    </script>
+
+    <!-- Load MathJax -->
+    <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" async></script>
+
+    <!-- Basic styling -->
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        h1, h2, h3, h4 {
+            color: #2c3e50;
+            margin-top: 1.5em;
+            border-bottom: 1px solid #eee;
+            padding-bottom: 0.3em;
+        }
+
+        h1 { border-bottom: 2px solid #3498db; }
+
+        code {
+            background-color: #f8f8f8;
+            padding: 2px 4px;
+            border-radius: 3px;
+            font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
+        }
+
+        pre {
+            background-color: #f8f8f8;
+            padding: 15px;
+            border-radius: 5px;
+            overflow-x: auto;
+            border-left: 4px solid #3498db;
+        }
+
+        table {
+            border-collapse: collapse;
+            width: 100%;
+            margin: 1em 0;
+        }
+
+        th, td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: left;
+        }
+
+        th {
+            background-color: #f2f2f2;
+            font-weight: bold;
+        }
+
+        tr:nth-child(even) { background-color: #f9f9f9; }
+
+        .math, .arithmatex {
+            overflow-x: auto;
+            overflow-y: hidden;
+        }
+
+        .mjx-chtml { outline: none; }
+
+        footer {
+            margin-top: 3em;
+            padding-top: 1em;
+            border-top: 1px solid #eee;
+            color: #7f8c8d;
+            font-size: 0.9em;
+        }
+    </style>
+</head>
+<body>
+    <h1>Claude Code Best Practices Guide</h1>
+<!-- 
+This document contains best practices for using Claude Code effectively.
+Last updated: 2025-08-18
+Last reviewed: 2025-08-18
+-->
+
+<h2>Table of Contents</h2>
+<ol>
+<li><a href="#claude-code-specific-best-practices">Claude Code Specific Best Practices</a></li>
+<li><a href="#test-driven-development-with-claude">Test-Driven Development with Claude</a></li>
+<li><a href="#token-efficiency-strategies">Token Efficiency Strategies</a></li>
+<li><a href="#workflow-automation">Workflow Automation</a></li>
+<li><a href="#team-collaboration">Team Collaboration</a></li>
+<li><a href="#security-and-quality">Security and Quality</a></li>
+<li><a href="#documentation-standards">Documentation Standards</a></li>
+<li><a href="#conventional-commits">Conventional Commits</a></li>
+<li><a href="#context-management">Context Management</a></li>
+<li><a href="#command-development">Command Development</a></li>
+</ol>
+<hr>
+<h2>Claude Code Specific Best Practices</h2>
+<h3>1. Structured Workflow Approach</h3>
+<p><strong>Source</strong>: <a href="https://www.anthropic.com/news/how-anthropic-teams-use-claude-code">Anthropic Internal Teams Usage Patterns</a></p>
+<p>The most successful Claude Code workflows follow this pattern:
+1. <strong>Research and exploration</strong> - Let Claude understand the codebase first
+2. <strong>Planning and documentation</strong> - Create a plan before implementation
+3. <strong>Implementation</strong> - Execute the plan with clear steps
+4. <strong>Testing and validation</strong> - Verify all changes work correctly
+5. <strong>Commit and PR creation</strong> - Use Claude's git integration</p>
+<blockquote>
+<p>"Steps #1-#2 are crucial—without them, Claude tends to jump straight to coding a solution. While sometimes that's what you want, asking Claude to research and plan first significantly improves performance for problems requiring deeper thinking upfront."</p>
+</blockquote>
+<h3>2. Permission Management</h3>
+<p><strong>Source</strong>: <a href="https://www.builder.io/blog/claude-code">Community Best Practices (Builder.io)</a></p>
+<p>The default permission prompts can interrupt flow. Two approaches:</p>
+<p><strong>Safe Approach</strong> (Recommended for production):
+<div class="highlight"><pre><span></span><code><span class="c1"># Allow specific safe operations</span>
+claude<span class="w"> </span>--allow<span class="w"> </span><span class="s2">&quot;npm run lint:*,npm test,git status&quot;</span>
+</code></pre></div></p>
+<p><strong>Development Approach</strong> (Use with caution):
+<div class="highlight"><pre><span></span><code><span class="c1"># Skip all permissions (similar to Cursor&#39;s yolo mode)</span>
+claude<span class="w"> </span>--dangerously-skip-permissions
+</code></pre></div></p>
+<blockquote>
+<p>"Every time I open Claude Code, I hit Command+C and run <code>claude --dangerously-skip-permissions</code>. It's not as dangerous as it sounds — think of it as Cursor's old yolo mode."</p>
+</blockquote>
+<h3>3. Custom Commands Best Practice</h3>
+<p><strong>Source</strong>: <a href="https://docs.anthropic.com/en/docs/claude-code/slash-commands">Claude Code Documentation</a></p>
+<p>Store reusable workflows as markdown files in <code>.claude/commands/</code>:
+- Commands become available via slash menu (type <code>/</code>)
+- Check into git for team sharing
+- Reduce repetitive prompting
+- Ensure consistent execution</p>
+<h3>4. CLAUDE.md Configuration</h3>
+<p><strong>Source</strong>: <a href="https://www.anthropic.com/engineering/claude-code-best-practices">Anthropic Best Practices</a></p>
+<p>Every project should have a <code>CLAUDE.md</code> file documenting:
+- Repository etiquette (branch naming, merge vs. rebase)
+- Developer environment setup (pyenv, compiler versions)
+- Unexpected behaviors or warnings
+- Project-specific conventions
+- Quality standards and thresholds</p>
+<hr>
+<h2>Test-Driven Development with Claude</h2>
+<h3>The TDD Advantage with AI</h3>
+<p><strong>Source</strong>: <a href="https://pragmaticengineer.com/p/two-years-of-using-ai">Community Testing Patterns</a></p>
+<blockquote>
+<p>"Test-driven development (TDD) becomes even more powerful when using Claude Code. The robots LOVE TDD. Seriously. They eat it up. With TDD you have the robot friend build out the test, and the mock. Then your next prompt you build the mock to be real. And the robot just loves this. It is the most effective counter to hallucination and LLM scope drift I have found."</p>
+</blockquote>
+<h3>TDD Best Practices for 2025</h3>
+<p><strong>Source</strong>: <a href="https://www.browserstack.com/guide/what-is-test-driven-development">BrowserStack TDD Guide</a></p>
+<ol>
+<li><strong>Follow Red-Green-Refactor</strong></li>
+<li>Write failing test first (Red)</li>
+<li>Write minimal code to pass (Green)</li>
+<li>
+<p>Refactor for clarity (Refactor)</p>
+</li>
+<li>
+<p><strong>Keep Tests Atomic</strong></p>
+</li>
+<li>Each test focuses on one behavior</li>
+<li>Avoid testing multiple functionalities</li>
+<li>
+<p>Improves debugging and maintenance</p>
+</li>
+<li>
+<p><strong>Start Simple</strong></p>
+</li>
+<li>Begin with the simplest test case</li>
+<li>Test fundamental features first</li>
+<li>
+<p>Progress to complex interactions</p>
+</li>
+<li>
+<p><strong>Comprehensive Coverage</strong></p>
+</li>
+<li>Include negative tests (failure conditions)</li>
+<li>Test boundary values (edge cases)</li>
+<li>Use equivalence partitioning</li>
+</ol>
+<hr>
+<h2>Token Efficiency Strategies</h2>
+<h3>NPM Script Delegation Pattern</h3>
+<p><strong>Source</strong>: This Repository's Measured Results (<a href="TOKEN_EFFICIENCY.md">docs/TOKEN_EFFICIENCY.md</a>)</p>
+<p>Achieve 87% token reduction through npm script delegation:</p>
+<p><strong>Before</strong> (264 lines in command):
+<div class="highlight"><pre><span></span><code><span class="gh"># Project Hygiene Check</span>
+[... 250+ lines of bash logic ...]
+</code></pre></div></p>
+<p><strong>After</strong> (30 lines in command):
+<div class="highlight"><pre><span></span><code><span class="gh"># Project Hygiene Check</span>
+\`\`\`bash
+npm run hygiene:full --silent
+\`\`\`
+</code></pre></div></p>
+<p><strong>Measured Results</strong>:
+- Average reduction: 89%
+- Hygiene command: 264 → 30 lines (88% reduction)
+- Commit command: 296 → 33 lines (88% reduction)
+- Maintainability: 458 → 42 lines (90% reduction)</p>
+<h3>Token Optimization Techniques</h3>
+<ol>
+<li><strong>Delegate to scripts</strong> - Move logic to npm/shell scripts</li>
+<li><strong>Use references</strong> - Link to files rather than embedding</li>
+<li><strong>Batch operations</strong> - Combine multiple tool calls</li>
+<li><strong>Context management</strong> - Proactively compact at checkpoints</li>
+</ol>
+<hr>
+<h2>Workflow Automation</h2>
+<h3>AI-Powered Development Practices</h3>
+<p><strong>Source</strong>: <a href="https://www.leanware.co/insights/best-practices-ai-software-development">2025 Industry Report</a></p>
+<ol>
+<li><strong>Supervised AI Agents</strong></li>
+<li>Human oversight for code generation</li>
+<li>Review agent reasoning and outputs</li>
+<li>Approve terminal command execution</li>
+<li>
+<p>Rollback capability when needed</p>
+</li>
+<li>
+<p><strong>CI/CD Integration</strong></p>
+</li>
+<li>Automate TDD-driven testing in pipelines</li>
+<li>Make testing integral to deployment</li>
+<li>Use AI for test generation</li>
+<li>
+<p>Monitor code quality metrics</p>
+</li>
+<li>
+<p><strong>Strategic Implementation</strong></p>
+</li>
+<li>Start with pilot projects</li>
+<li>Focus on high-impact use cases</li>
+<li>Integrate seamlessly with existing tools</li>
+<li>Measure and iterate on results</li>
+</ol>
+<hr>
+<h2>Team Collaboration</h2>
+<h3>Patterns from Anthropic Teams</h3>
+<p><strong>Source</strong>: <a href="https://www.anthropic.com/news/how-anthropic-teams-use-claude-code">How Anthropic Teams Use Claude Code</a></p>
+<blockquote>
+<p>"The pattern became clear: agentic coding isn't just accelerating traditional development. It's dissolving the boundary between technical and non-technical work, turning anyone who can describe a problem into someone who can build a solution."</p>
+</blockquote>
+<h3>Collaboration Best Practices</h3>
+<ol>
+<li><strong>Shared Commands</strong></li>
+<li>Check <code>.claude/commands/</code> into version control</li>
+<li>Document team-specific workflows</li>
+<li>
+<p>Create command templates for common tasks</p>
+</li>
+<li>
+<p><strong>Code Review Integration</strong>
+   <div class="highlight"><pre><span></span><code>/install-github-app<span class="w">  </span><span class="c1"># Automated PR reviews</span>
+</code></pre></div></p>
+<blockquote>
+<p>"Claude often finds bugs that humans miss. Humans nitpick variable names. Claude finds actual logic errors and security issues."</p>
+</blockquote>
+</li>
+<li>
+<p><strong>Knowledge Sharing</strong></p>
+</li>
+<li>Use <code>/learn</code> to capture insights</li>
+<li>Document patterns in CLAUDE.md</li>
+<li>Share effective prompts as commands</li>
+</ol>
+<hr>
+<h2>Security and Quality</h2>
+<h3>Security Best Practices</h3>
+<p><strong>Source</strong>: <a href="https://www.ibm.com/think/topics/ai-in-software-development">IBM AI Development Guide</a></p>
+<ol>
+<li><strong>Data Access Control</strong></li>
+<li>Know which data an agent can access</li>
+<li>Understand where data is sent</li>
+<li>
+<p>Manage software supply chain risks</p>
+</li>
+<li>
+<p><strong>Code Review Requirements</strong></p>
+</li>
+<li>All AI-generated code needs review</li>
+<li>Annotate AI changes in commits</li>
+<li>
+<p>Track AI-assisted changes</p>
+</li>
+<li>
+<p><strong>Quality Assurance</strong></p>
+</li>
+<li>Automated testing for all changes</li>
+<li>Version control for rollback</li>
+<li>Comprehensive test coverage</li>
+</ol>
+<h3>Quality Gates</h3>
+<p>Implement these checks before allowing commits:
+- Linting and formatting compliance
+- Type checking (if applicable)
+- Test suite execution
+- Build validation
+- Security scanning for secrets
+- File size monitoring</p>
+<hr>
+<h2>Documentation Standards</h2>
+<h3>Self-Documenting Code</h3>
+<p><strong>Source</strong>: <a href="https://codewave.com/insights/ai-automation-software-development/">Software Development Best Practices 2025</a></p>
+<ol>
+<li><strong>AI-Generated Documentation</strong></li>
+<li>Document the "why" not only the "what"</li>
+<li>Include context for AI decisions</li>
+<li>
+<p>Link to relevant issues/PRs</p>
+</li>
+<li>
+<p><strong>Living Documentation</strong></p>
+</li>
+<li>Update docs with code changes</li>
+<li>Use <code>/docs</code> command regularly</li>
+<li>
+<p>Track documentation metrics</p>
+</li>
+<li>
+<p><strong>Citation Requirements</strong></p>
+</li>
+<li>Cite sources for best practices</li>
+<li>Reference official documentation</li>
+<li>Include community patterns with attribution</li>
+</ol>
+<hr>
+<h2>Conventional Commits</h2>
+<h3>Specification Compliance</h3>
+<p><strong>Source</strong>: <a href="https://www.conventionalcommits.org/">Conventional Commits v1.0.0</a></p>
+<p><strong>Structure</strong>:
+<div class="highlight"><pre><span></span><code>&lt;type&gt;[optional scope]: &lt;description&gt;
+
+[optional body]
+
+[optional footer(s)]
+</code></pre></div></p>
+<p><strong>Essential Types</strong>:
+- <code>feat</code>: New features (MINOR version)
+- <code>fix</code>: Bug fixes (PATCH version)
+- <code>docs</code>: Documentation changes
+- <code>test</code>: Test additions/corrections
+- <code>refactor</code>: Code restructuring
+- <code>chore</code>: Maintenance tasks</p>
+<p><strong>Breaking Changes</strong>:
+- Add <code>!</code> after type/scope: <code>feat!: breaking change</code>
+- Or include in footer: <code>BREAKING CHANGE: description</code>
+- Results in MAJOR version bump</p>
+<h3>2025 Best Practices</h3>
+<p><strong>Source</strong>: <a href="https://www.enlume.com/blogs/mastering-commit-messages-a-guide-to-conventional-commits-and-best-practices">Conventional Commits Guide</a></p>
+<ol>
+<li><strong>Automation Integration</strong></li>
+<li>Use with semantic versioning</li>
+<li>Auto-generate changelogs</li>
+<li>
+<p>Integrate with CI/CD</p>
+</li>
+<li>
+<p><strong>Team Standards</strong></p>
+</li>
+<li>Enforce via commitlint</li>
+<li>Use git hooks (husky)</li>
+<li>
+<p>Regular team reviews</p>
+</li>
+<li>
+<p><strong>Message Quality</strong></p>
+</li>
+<li>Present tense, lowercase</li>
+<li>No period at end</li>
+<li>Focus on single concern</li>
+<li>Explain "why" in body</li>
+</ol>
+<hr>
+<h2>Context Management</h2>
+<h3>Managing Claude's Context Window</h3>
+<p><strong>Source</strong>: <a href="https://docs.anthropic.com/en/docs/claude-code/memory">Claude Code Documentation</a></p>
+<ol>
+<li><strong>Proactive Compaction</strong>
+   <div class="highlight"><pre><span></span><code>/compact<span class="w">  </span><span class="c1"># Manually compact at checkpoints</span>
+</code></pre></div></li>
+<li>Compact after feature completion</li>
+<li>Compact before starting new work</li>
+<li>
+<p>Monitor context indicator</p>
+</li>
+<li>
+<p><strong>Context Optimization</strong></p>
+</li>
+<li>Keep prompts focused</li>
+<li>Reference files vs embedding</li>
+<li>Use batch operations</li>
+<li>
+<p>Clear context between major tasks</p>
+</li>
+<li>
+<p><strong>Cost Management</strong></p>
+</li>
+<li>Track token usage per session</li>
+<li>Use <code>/estimate</code> before tasks</li>
+<li>Monitor actual vs estimated usage</li>
+<li>Optimize expensive operations</li>
+</ol>
+<hr>
+<h2>Command Development</h2>
+<h3>Creating Effective Commands</h3>
+<p><strong>Source</strong>: This Repository's Experience</p>
+<ol>
+<li>
+<p><strong>Command Structure</strong>
+   <div class="highlight"><pre><span></span><code>---
+allowed-tools: [Bash, Read, Write]
+<span class="gu">description: Brief command description</span>
+<span class="gu">---</span>
+
+<span class="gh"># Command Name</span>
+
+Instructions for Claude...
+</code></pre></div></p>
+</li>
+<li>
+<p><strong>Token Efficiency</strong></p>
+</li>
+<li>Delegate to npm scripts</li>
+<li>Keep commands under 50 lines</li>
+<li>Use references not embedding</li>
+<li>
+<p>Provide clear, concise instructions</p>
+</li>
+<li>
+<p><strong>Testing Commands</strong></p>
+</li>
+<li>Test on multiple project types</li>
+<li>Validate cross-platform</li>
+<li>Measure token usage</li>
+<li>
+<p>Document edge cases</p>
+</li>
+<li>
+<p><strong>Documentation</strong></p>
+</li>
+<li>Include usage examples</li>
+<li>Document prerequisites</li>
+<li>Explain configuration options</li>
+<li>Provide troubleshooting guide</li>
+</ol>
+<hr>
+<h2>Lessons from Production Sessions</h2>
+<h3>Real-World Session Management</h3>
+<p><strong>Source</strong>: Production usage patterns from extended Claude Code sessions</p>
+<p>Production sessions with Claude Code require different strategies than demo or learning sessions:</p>
+<h4>1. Directory Discipline</h4>
+<p><strong>Learning</strong>: Always return to repository root after operations</p>
+<div class="highlight"><pre><span></span><code><span class="c1"># Anti-pattern - Getting lost in subdirectories</span>
+<span class="nb">cd</span><span class="w"> </span>.claude/commands/
+<span class="c1"># ... operations ...</span>
+<span class="c1"># Forget to return, next operations fail</span>
+
+<span class="c1"># Best Practice - Always return home</span>
+<span class="nv">REPO_ROOT</span><span class="o">=</span><span class="k">$(</span><span class="nb">pwd</span><span class="k">)</span>
+<span class="nb">cd</span><span class="w"> </span>.claude/commands/
+<span class="c1"># ... operations ...</span>
+<span class="nb">cd</span><span class="w"> </span><span class="s2">&quot;</span><span class="nv">$REPO_ROOT</span><span class="s2">&quot;</span>
+</code></pre></div>
+<h4>2. Atomic Commit Discipline</h4>
+<p><strong>Learning</strong>: Plan commits before making changes, not after</p>
+<div class="highlight"><pre><span></span><code><span class="gh"># Anti-pattern - Retroactive splitting</span>
+<span class="k">-</span><span class="w"> </span>Make 1000+ line changes
+<span class="k">-</span><span class="w"> </span>Try to split into logical commits
+<span class="k">-</span><span class="w"> </span>Lose context and grouping
+
+<span class="gh"># Best Practice - Plan first</span>
+<span class="k">1.</span> Define commit boundaries (&lt;200 lines)
+<span class="k">2.</span> Make focused changes
+<span class="k">3.</span> Commit immediately
+<span class="k">4.</span> Move to next atomic unit
+</code></pre></div>
+<h4>3. Test-As-You-Go Principle</h4>
+<p><strong>Learning</strong>: Test immediately after each implementation</p>
+<div class="highlight"><pre><span></span><code><span class="c1"># Anti-pattern</span>
+<span class="k">for</span><span class="w"> </span>script<span class="w"> </span><span class="k">in</span><span class="w"> </span>scripts/*<span class="p">;</span><span class="w"> </span><span class="k">do</span>
+<span class="w">  </span><span class="nv">npm_script_name</span><span class="o">=</span><span class="k">$(</span>basename<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$script</span><span class="s2">&quot;</span><span class="k">)</span>
+<span class="w">  </span><span class="c1"># Create npm script</span>
+<span class="k">done</span>
+<span class="c1"># Test everything at end - cascading failures</span>
+
+<span class="c1"># Best Practice</span>
+<span class="k">for</span><span class="w"> </span>script<span class="w"> </span><span class="k">in</span><span class="w"> </span>scripts/*<span class="p">;</span><span class="w"> </span><span class="k">do</span>
+<span class="w">  </span><span class="nv">npm_script_name</span><span class="o">=</span><span class="k">$(</span>basename<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$script</span><span class="s2">&quot;</span><span class="k">)</span>
+<span class="w">  </span><span class="c1"># Create npm script</span>
+<span class="w">  </span>npm<span class="w"> </span>run<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$npm_script_name</span><span class="s2">&quot;</span><span class="w"> </span>--silent<span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nb">echo</span><span class="w"> </span><span class="s2">&quot;Failed: </span><span class="nv">$npm_script_name</span><span class="s2">&quot;</span>
+<span class="k">done</span>
+</code></pre></div>
+<h4>4. Context Management Strategy</h4>
+<p><strong>Learning</strong>: Proactive context management prevents confusion</p>
+<table>
+<thead>
+<tr>
+<th>Checkpoint Trigger</th>
+<th>Action Required</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>30 minutes elapsed</td>
+<td>Save checkpoint, assess progress</td>
+</tr>
+<tr>
+<td>30 interactions</td>
+<td>Consider compaction</td>
+</tr>
+<tr>
+<td>Major decision made</td>
+<td>Document rationale immediately</td>
+</tr>
+<tr>
+<td>Error encountered</td>
+<td>Capture state before fixing</td>
+</tr>
+</tbody>
+</table>
+<h4>5. Real-Time Documentation</h4>
+<p><strong>Learning</strong>: Document decisions as they're made, not retrospectively</p>
+<div class="highlight"><pre><span></span><code><span class="gh"># GitHub Issues - Update in real-time</span>
+<span class="gu">## Decision: Use NPM Script Delegation</span>
+<span class="k">-</span><span class="w"> </span>Time: 14:32
+<span class="k">-</span><span class="w"> </span>Rationale: 87% token reduction measured
+<span class="k">-</span><span class="w"> </span>Tradeoff: Slight indirection vs massive efficiency
+<span class="k">-</span><span class="w"> </span>Result: Implemented across all commands
+</code></pre></div>
+<h3>Production Patterns That Work</h3>
+<h4>1. Living Reference Architecture</h4>
+<p><strong>Proven</strong>: Repository that uses its own tools validates patterns</p>
+<p>Benefits discovered:
+- Immediate feedback on command usability
+- Real-world testing of patterns
+- Credibility through actual use
+- Natural evolution through practice</p>
+<h4>2. Token Efficiency First</h4>
+<p><strong>Proven</strong>: 87-91% reduction transforms development velocity</p>
+<p>Real metrics from session:
+- Before: 264 lines per command (~3000 tokens)
+- After: 30 lines per command (~300 tokens)
+- Impact: 10x more iterations possible</p>
+<h4>3. Subdirectory Organization</h4>
+<p><strong>Proven</strong>: <code>.claude/commands/detailed/</code> pattern scales cleanly</p>
+<p>Advantages realized:
+- No namespace pollution
+- Clear variant hierarchy
+- Future-proof structure
+- Easy discovery</p>
+<h3>Session Anti-patterns to Avoid</h3>
+<ol>
+<li><strong>Assumption Cascade</strong></li>
+<li>Making changes based on unverified assumptions</li>
+<li>
+<p>Solution: Verify state before each operation</p>
+</li>
+<li>
+<p><strong>Context Tunnel Vision</strong></p>
+</li>
+<li>Losing sight of original goals</li>
+<li>
+<p>Solution: Regular goal alignment checks</p>
+</li>
+<li>
+<p><strong>Documentation Debt</strong></p>
+</li>
+<li>"I'll document later" never happens</li>
+<li>
+<p>Solution: Document inline with implementation</p>
+</li>
+<li>
+<p><strong>Test Skipping</strong></p>
+</li>
+<li>Moving forward without validation</li>
+<li>Solution: Test before marking complete</li>
+</ol>
+<h3>Production Session Checklist</h3>
+<p>Before starting:
+- [ ] Read CLAUDE.md and check GitHub issues
+- [ ] Check recent git history
+- [ ] Create session plan with checkpoints
+- [ ] Estimate token budget</p>
+<p>During session:
+- [ ] Update todo list continuously
+- [ ] Test after each implementation
+- [ ] Document decisions real-time
+- [ ] Return to root after operations
+- [ ] Checkpoint every 30 minutes</p>
+<p>After session:
+- [ ] Save session transcript (optional)
+- [ ] Document learnings
+- [ ] Update metrics
+- [ ] Plan next session</p>
+<h3>Session Preservation (Optional)</h3>
+<p>If you choose to save sessions, consider:
+- <strong>Before context compaction</strong>: Preserve conversation before reset
+- <strong>After major features</strong>: Capture successful implementations
+- <strong>Pattern discoveries</strong>: Save when finding reusable solutions
+- <strong>Every 30-60 minutes</strong>: For long sessions you want to preserve</p>
+<p>Remember: Session saving is optional. Use it when it provides value to you.</p>
+<hr>
+<h2>Metrics and Validation</h2>
+<h3>Tracking Success</h3>
+<p><strong>Source</strong>: Industry Best Practices</p>
+<p>Key metrics to track:
+- <strong>Token usage</strong> per command
+- <strong>Execution time</strong> statistics
+- <strong>Error rates</strong> and recovery
+- <strong>User satisfaction</strong> scores
+- <strong>Cost per feature</strong> delivered</p>
+<h3>Continuous Improvement</h3>
+<ol>
+<li>Regular reviews of command effectiveness</li>
+<li>Update based on user feedback</li>
+<li>Monitor Claude API changes</li>
+<li>Incorporate new best practices</li>
+<li>Share learnings with community</li>
+</ol>
+<hr>
+<h2>References</h2>
+<ol>
+<li><a href="https://www.anthropic.com/engineering/claude-code-best-practices">Anthropic Claude Code Best Practices</a></li>
+<li><a href="https://www.anthropic.com/news/how-anthropic-teams-use-claude-code">How Anthropic Teams Use Claude Code</a></li>
+<li><a href="https://www.conventionalcommits.org/">Conventional Commits v1.0.0 Specification</a></li>
+<li><a href="https://www.browserstack.com/guide/what-is-test-driven-development">Test-Driven Development Guide (BrowserStack)</a></li>
+<li><a href="https://www.ibm.com/think/topics/ai-in-software-development">AI in Software Development (IBM)</a></li>
+<li><a href="https://www.builder.io/blog/claude-code">Community Patterns (Builder.io)</a></li>
+<li><a href="https://github.com/hesreallyhim/awesome-claude-code">Awesome Claude Code Repository</a></li>
+<li><a href="https://newsletter.pragmaticengineer.com/p/two-years-of-using-ai">Two Years of Using AI Tools (Pragmatic Engineer)</a></li>
+</ol>
+<hr>
+<p><em>Last updated: 2025-08-18</em>
+<em>Document maintained manually - review periodically for updates</em></p>
+
+    <footer>
+        <p>Generated from: BEST_PRACTICES.md</p>
+        <p>Last updated: 2026-01-22 15:39:59</p>
+        <p>Using MathJax v3 for mathematical notation rendering.</p>
+    </footer>
+</body>
+</html>

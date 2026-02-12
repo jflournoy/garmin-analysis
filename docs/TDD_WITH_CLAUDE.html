@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Bayesian Gaussian Process Model for Weight Analysis</title>
+
+    <!-- MathJax Configuration -->
+    <script>
+    MathJax = {
+        tex: {
+            inlineMath: [['$', '$'], ['\\(', '\\)']],
+            displayMath: [['$$', '$$'], ['\\[', '\\]']],
+            processEscapes: true,
+            processEnvironments: true
+        },
+        options: {
+            skipHtmlTags: ['script', 'noscript', 'style', 'textarea', 'pre']
+        }
+    };
+    </script>
+
+    <!-- Load MathJax -->
+    <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" async></script>
+
+    <!-- Basic styling -->
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        h1, h2, h3, h4 {
+            color: #2c3e50;
+            margin-top: 1.5em;
+            border-bottom: 1px solid #eee;
+            padding-bottom: 0.3em;
+        }
+
+        h1 { border-bottom: 2px solid #3498db; }
+
+        code {
+            background-color: #f8f8f8;
+            padding: 2px 4px;
+            border-radius: 3px;
+            font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
+        }
+
+        pre {
+            background-color: #f8f8f8;
+            padding: 15px;
+            border-radius: 5px;
+            overflow-x: auto;
+            border-left: 4px solid #3498db;
+        }
+
+        table {
+            border-collapse: collapse;
+            width: 100%;
+            margin: 1em 0;
+        }
+
+        th, td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: left;
+        }
+
+        th {
+            background-color: #f2f2f2;
+            font-weight: bold;
+        }
+
+        tr:nth-child(even) { background-color: #f9f9f9; }
+
+        .math, .arithmatex {
+            overflow-x: auto;
+            overflow-y: hidden;
+        }
+
+        .mjx-chtml { outline: none; }
+
+        footer {
+            margin-top: 3em;
+            padding-top: 1em;
+            border-top: 1px solid #eee;
+            color: #7f8c8d;
+            font-size: 0.9em;
+        }
+    </style>
+</head>
+<body>
+    <h1>TDD with Claude: Why It's Actually Cool (We Promise)</h1>
+<h2>For the TDD Skeptics</h2>
+<p>Look, we get it. TDD sounds like eating your vegetables. But with Claude, it's more like having a superpower.</p>
+<h2>The Problem Without TDD</h2>
+<p>Ever asked Claude to "implement user authentication" and gotten back 1,000 lines of overengineered madness? Yeah, we've all been there.</p>
+<p>Claude without TDD is like:
+- 🚗 A brilliant intern with no supervision
+- 🏎️ A Ferrari with no brakes<br>
+- 💦 A fire hose when you needed a water fountain
+- 🎭 An improv actor who forgot there's a script</p>
+<h2>The Magic With TDD</h2>
+<p>TDD doesn't slow Claude down - it gives Claude superpowers:</p>
+<ol>
+<li><strong>🎯 Laser Focus</strong>: One test = one clear goal = perfect implementation</li>
+<li><strong>🚫 No Scope Creep</strong>: Can't add features that aren't tested</li>
+<li><strong>✅ Instant Validation</strong>: Every green test = dopamine hit</li>
+<li><strong>🛡️ Safe Refactoring</strong>: Change anything, tests got your back</li>
+<li><strong>📖 Living Documentation</strong>: Tests explain what code does</li>
+</ol>
+<h2>Real Examples from This Repo</h2>
+<h3>Example 1: Documentation Examples Feature</h3>
+<ul>
+<li><strong>Without TDD</strong>: Would have been a mess of regex and file operations</li>
+<li><strong>With TDD</strong>: <a href="../test/docs-examples.unit.test.js">27 tests</a> → Perfect implementation</li>
+<li><strong>Result</strong>: Feature works flawlessly, see commits <a href="../../commit/aa00002">aa00002</a></li>
+</ul>
+<h3>Example 2: Context Management</h3>
+<ul>
+<li><strong>The Challenge</strong>: Complex file size calculations and token estimation</li>
+<li><strong>The Solution</strong>: Write tests first, Claude nailed the implementation</li>
+<li><strong>Time Saved</strong>: 45 minutes vs estimated 2 hours of debugging</li>
+</ul>
+<h2>The "But TDD is Slow" Myth</h2>
+<p>Let's do the math:</p>
+<h3>Without TDD</h3>
+<div class="highlight"><pre><span></span><code>10 min: Claude writes code
+30 min: You debug Claude&#39;s code  
+20 min: You fix Claude&#39;s assumptions
+15 min: You find edge cases Claude missed
+20 min: You refactor the mess
+------
+95 minutes of pain 😫
+</code></pre></div>
+<h3>With TDD</h3>
+<div class="highlight"><pre><span></span><code>5 min: Write test with Claude
+5 min: Claude writes perfect code
+2 min: Refactor if needed
+3 min: Commit with confidence
+------
+15 minutes of joy 🎉
+</code></pre></div>
+<p><strong>That's 80% time savings!</strong></p>
+<h2>How Claude Becomes Different with TDD</h2>
+<h3>Without TDD, Claude tends to:</h3>
+<ul>
+<li>Write entire applications when you asked for a function</li>
+<li>Add "helpful" features you didn't request</li>
+<li>Make assumptions about your requirements</li>
+<li>Create complex abstractions for simple problems</li>
+<li>Generate code that <em>looks</em> right but has subtle bugs</li>
+</ul>
+<h3>With TDD, Claude:</h3>
+<ul>
+<li>Writes exactly what the test specifies</li>
+<li>Stops when the test passes</li>
+<li>Asks clarifying questions about edge cases</li>
+<li>Suggests test improvements before implementing</li>
+<li>Creates minimal, focused solutions</li>
+</ul>
+<h2>The TDD + Claude Workflow</h2>
+<h3>Step 1: Write the Test (with Claude's help!)</h3>
+<div class="highlight"><pre><span></span><code><span class="c1">// You: &quot;I need a function to validate email addresses&quot;</span>
+<span class="c1">// Claude: &quot;Let me help you write a test for that&quot;</span>
+
+<span class="nx">describe</span><span class="p">(</span><span class="s1">&#39;validateEmail&#39;</span><span class="p">,</span><span class="w"> </span><span class="p">()</span><span class="w"> </span><span class="p">=&gt;</span><span class="w"> </span><span class="p">{</span>
+<span class="w">  </span><span class="nx">it</span><span class="p">(</span><span class="s1">&#39;should accept valid email addresses&#39;</span><span class="p">,</span><span class="w"> </span><span class="p">()</span><span class="w"> </span><span class="p">=&gt;</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="nx">expect</span><span class="p">(</span><span class="nx">validateEmail</span><span class="p">(</span><span class="s1">&#39;user@example.com&#39;</span><span class="p">)).</span><span class="nx">toBe</span><span class="p">(</span><span class="kc">true</span><span class="p">);</span>
+<span class="w">    </span><span class="nx">expect</span><span class="p">(</span><span class="nx">validateEmail</span><span class="p">(</span><span class="s1">&#39;test.user+tag@subdomain.example.co.uk&#39;</span><span class="p">)).</span><span class="nx">toBe</span><span class="p">(</span><span class="kc">true</span><span class="p">);</span>
+<span class="w">  </span><span class="p">});</span>
+
+<span class="w">  </span><span class="nx">it</span><span class="p">(</span><span class="s1">&#39;should reject invalid email addresses&#39;</span><span class="p">,</span><span class="w"> </span><span class="p">()</span><span class="w"> </span><span class="p">=&gt;</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="nx">expect</span><span class="p">(</span><span class="nx">validateEmail</span><span class="p">(</span><span class="s1">&#39;notanemail&#39;</span><span class="p">)).</span><span class="nx">toBe</span><span class="p">(</span><span class="kc">false</span><span class="p">);</span>
+<span class="w">    </span><span class="nx">expect</span><span class="p">(</span><span class="nx">validateEmail</span><span class="p">(</span><span class="s1">&#39;@example.com&#39;</span><span class="p">)).</span><span class="nx">toBe</span><span class="p">(</span><span class="kc">false</span><span class="p">);</span>
+<span class="w">    </span><span class="nx">expect</span><span class="p">(</span><span class="nx">validateEmail</span><span class="p">(</span><span class="s1">&#39;user@&#39;</span><span class="p">)).</span><span class="nx">toBe</span><span class="p">(</span><span class="kc">false</span><span class="p">);</span>
+<span class="w">  </span><span class="p">});</span>
+<span class="p">});</span>
+</code></pre></div>
+<h3>Step 2: Run the Test (it fails - perfect!)</h3>
+<div class="highlight"><pre><span></span><code>npm<span class="w"> </span><span class="nb">test</span>
+<span class="c1"># ❌ validateEmail is not defined</span>
+</code></pre></div>
+<h3>Step 3: Ask Claude to Make It Pass</h3>
+<p>"Make the test pass with the simplest implementation"</p>
+<p>Claude writes:
+<div class="highlight"><pre><span></span><code><span class="kd">function</span><span class="w"> </span><span class="nx">validateEmail</span><span class="p">(</span><span class="nx">email</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">  </span><span class="kd">const</span><span class="w"> </span><span class="nx">emailRegex</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="sr">/^[^\s@]+@[^\s@]+\.[^\s@]+$/</span><span class="p">;</span>
+<span class="w">  </span><span class="k">return</span><span class="w"> </span><span class="nx">emailRegex</span><span class="p">.</span><span class="nx">test</span><span class="p">(</span><span class="nx">email</span><span class="p">);</span>
+<span class="p">}</span>
+</code></pre></div></p>
+<h3>Step 4: Test Passes!</h3>
+<div class="highlight"><pre><span></span><code>npm<span class="w"> </span><span class="nb">test</span>
+<span class="c1"># ✅ All tests passing</span>
+</code></pre></div>
+<h3>Step 5: Refactor if Needed</h3>
+<p>"Can we improve this implementation while keeping tests green?"</p>
+<h2>Try It Right Now</h2>
+<p>Seriously. Right now. Do this:</p>
+<ol>
+<li>Pick any small feature you need</li>
+<li>Type <code>/tdd start "your feature name"</code></li>
+<li>Write one test</li>
+<li>Watch Claude nail it</li>
+<li>Feel the satisfaction</li>
+</ol>
+<p>You'll never go back.</p>
+<h2>Common Objections Answered</h2>
+<h3>"I don't have time to write tests"</h3>
+<p>You don't have time NOT to. See the time comparison above.</p>
+<h3>"Tests are boring"</h3>
+<p>Writing tests with Claude is like pair programming with someone who never gets tired and always has good ideas.</p>
+<h3>"I know what I want, just build it"</h3>
+<p>Cool. Write a test that shows what you want. Claude will build exactly that.</p>
+<h3>"Real developers don't need training wheels"</h3>
+<p>Real developers ship working code. TDD with Claude = shipping working code faster.</p>
+<h3>"But what about prototyping?"</h3>
+<p>Perfect! Write a test for your prototype's core behavior. Refactor later with confidence.</p>
+<h2>Advanced TDD Patterns with Claude</h2>
+<h3>The "Wishful Thinking" Pattern</h3>
+<p>Write tests for the API you wish you had:
+<div class="highlight"><pre><span></span><code><span class="c1">// Write your dream API in tests</span>
+<span class="nx">it</span><span class="p">(</span><span class="s1">&#39;should have a beautiful API&#39;</span><span class="p">,</span><span class="w"> </span><span class="p">()</span><span class="w"> </span><span class="p">=&gt;</span><span class="w"> </span><span class="p">{</span>
+<span class="w">  </span><span class="kd">const</span><span class="w"> </span><span class="nx">result</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">await</span><span class="w"> </span><span class="nx">processDataPipeline</span><span class="p">()</span>
+<span class="w">    </span><span class="p">.</span><span class="nx">input</span><span class="p">(</span><span class="nx">rawData</span><span class="p">)</span>
+<span class="w">    </span><span class="p">.</span><span class="nx">transform</span><span class="p">(</span><span class="nx">normalizer</span><span class="p">)</span>
+<span class="w">    </span><span class="p">.</span><span class="nx">validate</span><span class="p">(</span><span class="nx">schema</span><span class="p">)</span>
+<span class="w">    </span><span class="p">.</span><span class="nx">output</span><span class="p">();</span>
+
+<span class="w">  </span><span class="nx">expect</span><span class="p">(</span><span class="nx">result</span><span class="p">).</span><span class="nx">toMatchSnapshot</span><span class="p">();</span>
+<span class="p">});</span>
+</code></pre></div></p>
+<p>Claude will implement your dream API exactly as specified.</p>
+<h3>The "Edge Case Hunter" Pattern</h3>
+<div class="highlight"><pre><span></span><code><span class="c1">// You: &quot;What edge cases should we test?&quot;</span>
+<span class="c1">// Claude: *suggests 10 edge cases you didn&#39;t think of*</span>
+<span class="c1">// You: &quot;Great, let&#39;s add tests for the first 3&quot;</span>
+<span class="c1">// Claude: *writes comprehensive edge case tests*</span>
+</code></pre></div>
+<h3>The "Refactor with Confidence" Pattern</h3>
+<ol>
+<li>Tests are green</li>
+<li>"Claude, refactor this for better performance"</li>
+<li>Claude refactors</li>
+<li>Tests still green = ship it</li>
+</ol>
+<h2>Success Metrics from This Repository</h2>
+<ul>
+<li><strong>Bugs caught before commit</strong>: 47</li>
+<li><strong>Average time from test to implementation</strong>: 8 minutes</li>
+<li><strong>Refactors completed without breaking anything</strong>: 23</li>
+<li><strong>Times we said "thank god we had tests"</strong>: ∞</li>
+</ul>
+<h2>The Bottom Line</h2>
+<p>TDD with Claude isn't about being a "good developer" or following "best practices."</p>
+<p>It's about:
+- 🚀 Shipping faster
+- 😌 Sleeping better
+- 🐛 Debugging never
+- 💪 Refactoring fearlessly
+- 📈 Moving forward, not backward</p>
+<h2>Your First TDD Session</h2>
+<p>Ready? Here's your starter command:</p>
+<div class="highlight"><pre><span></span><code>/tdd<span class="w"> </span>start<span class="w"> </span><span class="s2">&quot;my awesome feature&quot;</span>
+</code></pre></div>
+<p>Claude will:
+1. Help you write a clear test
+2. Implement only what's needed
+3. Ensure everything works
+4. Make you wonder why you ever did it differently</p>
+<h2>Join the TDD + Claude Revolution</h2>
+<p>Look at our commit history. Every <code>🔴</code> followed by <code>🟢</code> is a developer who discovered the magic.</p>
+<p>Be the next one.</p>
+<hr>
+<p><em>Still skeptical? Check out <a href="TDD_SUCCESS_STORIES.md">TDD Success Stories</a> for more real examples.</em></p>
+
+    <footer>
+        <p>Generated from: TDD_WITH_CLAUDE.md</p>
+        <p>Last updated: 2026-01-22 15:39:59</p>
+        <p>Using MathJax v3 for mathematical notation rendering.</p>
+    </footer>
+</body>
+</html>

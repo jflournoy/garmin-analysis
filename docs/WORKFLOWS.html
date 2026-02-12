@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Bayesian Gaussian Process Model for Weight Analysis</title>
+
+    <!-- MathJax Configuration -->
+    <script>
+    MathJax = {
+        tex: {
+            inlineMath: [['$', '$'], ['\\(', '\\)']],
+            displayMath: [['$$', '$$'], ['\\[', '\\]']],
+            processEscapes: true,
+            processEnvironments: true
+        },
+        options: {
+            skipHtmlTags: ['script', 'noscript', 'style', 'textarea', 'pre']
+        }
+    };
+    </script>
+
+    <!-- Load MathJax -->
+    <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" async></script>
+
+    <!-- Basic styling -->
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        h1, h2, h3, h4 {
+            color: #2c3e50;
+            margin-top: 1.5em;
+            border-bottom: 1px solid #eee;
+            padding-bottom: 0.3em;
+        }
+
+        h1 { border-bottom: 2px solid #3498db; }
+
+        code {
+            background-color: #f8f8f8;
+            padding: 2px 4px;
+            border-radius: 3px;
+            font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
+        }
+
+        pre {
+            background-color: #f8f8f8;
+            padding: 15px;
+            border-radius: 5px;
+            overflow-x: auto;
+            border-left: 4px solid #3498db;
+        }
+
+        table {
+            border-collapse: collapse;
+            width: 100%;
+            margin: 1em 0;
+        }
+
+        th, td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: left;
+        }
+
+        th {
+            background-color: #f2f2f2;
+            font-weight: bold;
+        }
+
+        tr:nth-child(even) { background-color: #f9f9f9; }
+
+        .math, .arithmatex {
+            overflow-x: auto;
+            overflow-y: hidden;
+        }
+
+        .mjx-chtml { outline: none; }
+
+        footer {
+            margin-top: 3em;
+            padding-top: 1em;
+            border-top: 1px solid #eee;
+            color: #7f8c8d;
+            font-size: 0.9em;
+        }
+    </style>
+</head>
+<body>
+    <h1>Real-World Command Workflows</h1>
+<h2>Feature Development Flow</h2>
+<p>A complete example of developing a new feature using TDD and quality checks:</p>
+<div class="highlight"><pre><span></span><code><span class="c1"># 1. Check project health</span>
+/hygiene
+<span class="c1"># Output: ✅ All checks passing</span>
+
+<span class="c1"># 2. Start with TDD</span>
+/tdd<span class="w"> </span>start<span class="w"> </span><span class="s2">&quot;new feature&quot;</span>
+<span class="c1"># Creates test file and guides through red-green-refactor</span>
+
+<span class="c1"># 3. Track your work</span>
+/todo<span class="w"> </span>add<span class="w"> </span><span class="s2">&quot;Write failing tests&quot;</span>
+/todo<span class="w"> </span>add<span class="w"> </span><span class="s2">&quot;Implement feature&quot;</span>
+/todo<span class="w"> </span>add<span class="w"> </span><span class="s2">&quot;Refactor and optimize&quot;</span>
+
+<span class="c1"># 4. Capture learnings</span>
+/learn<span class="w"> </span><span class="s2">&quot;TDD helps clarify requirements before coding&quot;</span>
+
+<span class="c1"># 5. Make quality-checked commits</span>
+/commit<span class="w"> </span>feat<span class="w"> </span><span class="s2">&quot;add new feature with tests&quot;</span>
+<span class="c1"># Runs: lint, tests before committing</span>
+
+<span class="c1"># 6. Push when ready</span>
+/push
+<span class="c1"># Validates and pushes to remote</span>
+</code></pre></div>
+<h2>Daily Development Flow</h2>
+<p>Your typical daily workflow with Claude Code:</p>
+<div class="highlight"><pre><span></span><code><span class="c1"># Morning: Check status and priorities</span>
+/next
+<span class="c1"># Output: Recommends highest priority task</span>
+
+/todo<span class="w"> </span>list
+<span class="c1"># Shows current task list</span>
+
+<span class="c1"># During work: Atomic commits</span>
+/commit
+<span class="c1"># Enforces small, focused commits (1-3 files)</span>
+
+<span class="c1"># Capture insights</span>
+/learn<span class="w"> </span><span class="s2">&quot;Using middleware for auth is cleaner than decorators&quot;</span>
+
+<span class="c1"># End of day: Reflect</span>
+/reflect
+<span class="c1"># Captures session learnings</span>
+</code></pre></div>
+<h2>Quick Status Check</h2>
+<div class="highlight"><pre><span></span><code>/hygiene<span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span>/todo<span class="w"> </span>list<span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span>/next
+<span class="c1"># Full status check → task list → recommendations</span>
+</code></pre></div>
+<h2>Bug Fix Workflow</h2>
+<div class="highlight"><pre><span></span><code><span class="c1"># 1. Reproduce and understand</span>
+/todo<span class="w"> </span>add<span class="w"> </span><span class="s2">&quot;Reproduce bug in test&quot;</span>
+/tdd<span class="w"> </span>start<span class="w"> </span><span class="s2">&quot;bug fix&quot;</span>
+
+<span class="c1"># 2. Fix with verification</span>
+<span class="c1"># Make fix...</span>
+/hygiene<span class="w">  </span><span class="c1"># Ensure no regressions</span>
+
+<span class="c1"># 3. Document</span>
+/learn<span class="w"> </span><span class="s2">&quot;Bug was caused by race condition in async handler&quot;</span>
+/commit<span class="w"> </span>fix<span class="w"> </span><span class="s2">&quot;resolve race condition in user handler&quot;</span>
+</code></pre></div>
+<h2>Refactoring Workflow</h2>
+<div class="highlight"><pre><span></span><code><span class="c1"># 1. Ensure tests pass first</span>
+/hygiene
+
+<span class="c1"># 2. Plan refactoring</span>
+/todo<span class="w"> </span>add<span class="w"> </span><span class="s2">&quot;Extract validation logic&quot;</span>
+/todo<span class="w"> </span>add<span class="w"> </span><span class="s2">&quot;Create validator module&quot;</span>
+/todo<span class="w"> </span>add<span class="w"> </span><span class="s2">&quot;Update tests&quot;</span>
+
+<span class="c1"># 3. Refactor incrementally</span>
+<span class="c1"># Make changes...</span>
+/hygiene<span class="w">  </span><span class="c1"># Check after each step</span>
+
+<span class="c1"># 4. Commit atomically</span>
+/commit<span class="w"> </span>refactor<span class="w"> </span><span class="s2">&quot;extract validation to dedicated module&quot;</span>
+</code></pre></div>
+<h2>Documentation Update</h2>
+<div class="highlight"><pre><span></span><code><span class="c1"># 1. Analyze current docs</span>
+/docs
+
+<span class="c1"># 2. Make updates</span>
+<span class="c1"># Edit documentation...</span>
+
+<span class="c1"># 3. Verify and commit</span>
+/commit<span class="w"> </span>docs<span class="w"> </span><span class="s2">&quot;update API documentation&quot;</span>
+</code></pre></div>
+<h2>Release Preparation</h2>
+<div class="highlight"><pre><span></span><code><span class="c1"># 1. Full quality check</span>
+/hygiene
+
+<span class="c1"># 2. Review changes</span>
+/reflect<span class="w">  </span><span class="c1"># Summarize what&#39;s changed</span>
+
+<span class="c1"># 3. Update docs if needed</span>
+/docs
+
+<span class="c1"># 4. Final push</span>
+/push
+</code></pre></div>
+<h2>Tips for Efficient Workflows</h2>
+<h3>Chaining Commands</h3>
+<p>Commands can be chained for efficiency:
+<div class="highlight"><pre><span></span><code>/hygiene<span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span>/todo<span class="w"> </span>list<span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span>/next
+</code></pre></div></p>
+<h3>Regular Health Checks</h3>
+<p>Run <code>/hygiene</code> before and after major changes to catch issues early.</p>
+<h3>Atomic Commits</h3>
+<p>Use <code>/commit</code> frequently for small, focused commits rather than large batches.</p>
+<h3>Continuous Learning</h3>
+<p>Use <code>/learn</code> throughout the day to build your project knowledge base.</p>
+
+    <footer>
+        <p>Generated from: WORKFLOWS.md</p>
+        <p>Last updated: 2026-01-22 15:39:59</p>
+        <p>Using MathJax v3 for mathematical notation rendering.</p>
+    </footer>
+</body>
+</html>

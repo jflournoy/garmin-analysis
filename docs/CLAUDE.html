@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Bayesian Gaussian Process Model for Weight Analysis</title>
+
+    <!-- MathJax Configuration -->
+    <script>
+    MathJax = {
+        tex: {
+            inlineMath: [['$', '$'], ['\\(', '\\)']],
+            displayMath: [['$$', '$$'], ['\\[', '\\]']],
+            processEscapes: true,
+            processEnvironments: true
+        },
+        options: {
+            skipHtmlTags: ['script', 'noscript', 'style', 'textarea', 'pre']
+        }
+    };
+    </script>
+
+    <!-- Load MathJax -->
+    <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" async></script>
+
+    <!-- Basic styling -->
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        h1, h2, h3, h4 {
+            color: #2c3e50;
+            margin-top: 1.5em;
+            border-bottom: 1px solid #eee;
+            padding-bottom: 0.3em;
+        }
+
+        h1 { border-bottom: 2px solid #3498db; }
+
+        code {
+            background-color: #f8f8f8;
+            padding: 2px 4px;
+            border-radius: 3px;
+            font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
+        }
+
+        pre {
+            background-color: #f8f8f8;
+            padding: 15px;
+            border-radius: 5px;
+            overflow-x: auto;
+            border-left: 4px solid #3498db;
+        }
+
+        table {
+            border-collapse: collapse;
+            width: 100%;
+            margin: 1em 0;
+        }
+
+        th, td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: left;
+        }
+
+        th {
+            background-color: #f2f2f2;
+            font-weight: bold;
+        }
+
+        tr:nth-child(even) { background-color: #f9f9f9; }
+
+        .math, .arithmatex {
+            overflow-x: auto;
+            overflow-y: hidden;
+        }
+
+        .mjx-chtml { outline: none; }
+
+        footer {
+            margin-top: 3em;
+            padding-top: 1em;
+            border-top: 1px solid #eee;
+            color: #7f8c8d;
+            font-size: 0.9em;
+        }
+    </style>
+</head>
+<body>
+    <h1>CLAUDE.md - Project AI Guidelines</h1>
+<p>This project is a Bayesian analysis of Garmin health data using Stan.</p>
+<h2>State Tracking</h2>
+<p><strong>Use two complementary systems for tracking work:</strong></p>
+<ol>
+<li><strong>TodoWrite tool</strong> (primary) - Use for task management visible to the user</li>
+<li>Break work into discrete, actionable items</li>
+<li>Mark tasks in_progress/completed as you work</li>
+<li>
+<p>Good for: task lists, progress tracking, user visibility</p>
+</li>
+<li>
+<p><strong><code>.claude-current-status</code> file</strong> (supplementary) - Higher-resolution notes</p>
+</li>
+<li>Timestamps, context, decisions, file references</li>
+<li>Details that don't fit in todo items</li>
+<li>Session continuity across conversations</li>
+<li>Good for: debugging context, decision rationale, file locations</li>
+</ol>
+<p><strong>Workflow:</strong> Start tasks with TodoWrite, always add detailed notes to <code>.claude-current-status</code>. When you add notes, re-assess and clean up old notes.</p>
+<p><strong>Status Management Commands:</strong>
+- <code>/continue</code> - Efficiently resume work by extracting recent session context
+- <code>/condense [N]</code> - Archive old content, keep last N lines (default: 200)
+- <code>scripts/status-helper.sh</code> - Auto-cleanup helper for updates</p>
+<p><strong>Auto-Cleanup Pattern:</strong> When updating <code>.claude-current-status</code>, check if file exceeds 300 lines and consider running <code>/condense</code>.</p>
+<h2>Project Overview</h2>
+<p><strong>Goal</strong>: Build a personal health analytics system with:
+1. Bayesian models in Stan for analyzing Garmin data (weight, sleep, activity, etc.)
+2. Interactive D3.js visualizations for exploring health relationships
+3. A web interface for exploring model results and data trends</p>
+<h2>Tooling Requirements</h2>
+<p><strong>CRITICAL: Always use these tools for their respective domains:</strong></p>
+<ul>
+<li><strong>Python</strong>: Always use <code>uv</code> for Python package management and execution</li>
+<li><code>uv add &lt;package&gt;</code> - Add dependencies</li>
+<li><code>uv run python script.py</code> - Run Python scripts</li>
+<li><code>uv sync</code> - Sync dependencies</li>
+<li>
+<p>Never use raw <code>python</code> or <code>pip</code> commands</p>
+</li>
+<li>
+<p><strong>JavaScript/Node</strong>: Use <code>npm</code> for package management</p>
+</li>
+<li><code>npm install</code> - Install dependencies</li>
+<li>
+<p><code>npm run &lt;script&gt;</code> - Run scripts</p>
+</li>
+<li>
+<p><strong>Stan</strong>: Use CmdStanPy for Stan model compilation and sampling</p>
+</li>
+<li>Models go in <code>stan/</code> directory with <code>.stan</code> extension</li>
+</ul>
+<h2>Data Location</h2>
+<p>Garmin export data is in <code>data/DI_CONNECT/</code>:
+- <code>DI-Connect-Wellness/</code> - Biometrics, sleep, heart rate, nutrition
+- <code>DI-Connect-Fitness/</code> - Activities, workouts, personal records
+- <code>DI-Connect-Aggregator/</code> - Daily summaries (UDS files), hydration
+- <code>DI-Connect-Metrics/</code> - VO2 max, training metrics</p>
+<p><strong>Important</strong>: The <code>data/</code> directory contains personal health data and is gitignored.</p>
+<h2>Project Structure</h2>
+<div class="highlight"><pre><span></span><code>garmin-analysis-v2/
+├── data/                    # Garmin export data (gitignored)
+├── stan/                    # Stan model files
+├── src/                     # Python analysis code
+│   ├── data/               # Data loading utilities
+│   ├── models/             # Model fitting code
+│   └── analysis/           # Analysis scripts
+├── web/                     # D3.js visualization (future)
+└── notebooks/              # Jupyter notebooks for exploration
+</code></pre></div>
+<h2>Development Method: TDD</h2>
+<p><strong>RECOMMENDED: Use Test-Driven Development for new features</strong></p>
+<h3>TDD Workflow</h3>
+<ol>
+<li>🔴 <strong>RED</strong>: Write a failing test to define requirements</li>
+<li>🟢 <strong>GREEN</strong>: Write minimal code to pass the test</li>
+<li>🔄 <strong>REFACTOR</strong>: Improve code with test safety net</li>
+<li>✓ <strong>COMMIT</strong>: Ship working, tested code</li>
+</ol>
+<h2>Critical Instructions</h2>
+<p><strong>ALWAYS use <code>date</code> command for dates</strong> - Never assume or guess dates. Always run <code>date "+%Y-%m-%d"</code> when you need the current date for documentation, commits, or any other purpose.</p>
+<h2>AI Integrity Principles</h2>
+<p><strong>CRITICAL: Always provide honest, objective recommendations based on technical merit, not user bias.</strong></p>
+<ul>
+<li><strong>Never agree with users by default</strong> - evaluate each suggestion independently</li>
+<li><strong>Challenge bad ideas directly</strong> - if something is technically wrong, say so clearly</li>
+<li><strong>Recommend best practices</strong> even if they contradict user preferences</li>
+<li><strong>Explain trade-offs honestly</strong> - don't hide downsides of approaches</li>
+</ul>
+<h2>Commands</h2>
+<ul>
+<li><code>/hygiene</code> - Project health check</li>
+<li><code>/commit</code> - Quality-checked commits</li>
+<li><code>/tdd</code> - Test-driven development workflow</li>
+<li><code>/learn</code> - Capture insights</li>
+<li><code>/docs</code> - Update documentation</li>
+</ul>
+<h2>Project Standards</h2>
+<ul>
+<li>Test coverage: 60% minimum</li>
+<li>Documentation: All features documented</li>
+<li>Error handling: Graceful failures with clear messages</li>
+<li>ALWAYS use atomic commits</li>
+<li>Use emojis judiciously</li>
+<li>NEVER Edit() a file before you Read() the file</li>
+</ul>
+
+    <footer>
+        <p>Generated from: CLAUDE.md</p>
+        <p>Last updated: 2026-01-31 22:21:42</p>
+        <p>Using MathJax v3 for mathematical notation rendering.</p>
+    </footer>
+</body>
+</html>

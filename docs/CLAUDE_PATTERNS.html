@@ -1,0 +1,566 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Bayesian Gaussian Process Model for Weight Analysis</title>
+
+    <!-- MathJax Configuration -->
+    <script>
+    MathJax = {
+        tex: {
+            inlineMath: [['$', '$'], ['\\(', '\\)']],
+            displayMath: [['$$', '$$'], ['\\[', '\\]']],
+            processEscapes: true,
+            processEnvironments: true
+        },
+        options: {
+            skipHtmlTags: ['script', 'noscript', 'style', 'textarea', 'pre']
+        }
+    };
+    </script>
+
+    <!-- Load MathJax -->
+    <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" async></script>
+
+    <!-- Basic styling -->
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        h1, h2, h3, h4 {
+            color: #2c3e50;
+            margin-top: 1.5em;
+            border-bottom: 1px solid #eee;
+            padding-bottom: 0.3em;
+        }
+
+        h1 { border-bottom: 2px solid #3498db; }
+
+        code {
+            background-color: #f8f8f8;
+            padding: 2px 4px;
+            border-radius: 3px;
+            font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
+        }
+
+        pre {
+            background-color: #f8f8f8;
+            padding: 15px;
+            border-radius: 5px;
+            overflow-x: auto;
+            border-left: 4px solid #3498db;
+        }
+
+        table {
+            border-collapse: collapse;
+            width: 100%;
+            margin: 1em 0;
+        }
+
+        th, td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: left;
+        }
+
+        th {
+            background-color: #f2f2f2;
+            font-weight: bold;
+        }
+
+        tr:nth-child(even) { background-color: #f9f9f9; }
+
+        .math, .arithmatex {
+            overflow-x: auto;
+            overflow-y: hidden;
+        }
+
+        .mjx-chtml { outline: none; }
+
+        footer {
+            margin-top: 3em;
+            padding-top: 1em;
+            border-top: 1px solid #eee;
+            color: #7f8c8d;
+            font-size: 0.9em;
+        }
+    </style>
+</head>
+<body>
+    <h1>Claude Code Patterns</h1>
+<!-- 
+This document is self-updating. To regenerate:
+In Claude Code: /docs update claude-patterns
+Last updated: 2025-01-16
+-->
+
+<p>Discovered patterns and strategies specific to Claude Code development sessions.</p>
+<h2>Table of Contents</h2>
+<ul>
+<li><a href="#token-efficiency-patterns">Token Efficiency Patterns</a></li>
+<li><a href="#context-management">Context Management</a></li>
+<li><a href="#command-architecture">Command Architecture</a></li>
+<li><a href="#living-reference-pattern">Living Reference Pattern</a></li>
+<li><a href="#self-documentation-system">Self-Documentation System</a></li>
+<li><a href="#session-management">Session Management</a></li>
+<li><a href="#anti-patterns-to-avoid">Anti-patterns to Avoid</a></li>
+</ul>
+<hr>
+<h2>Token Efficiency Patterns</h2>
+<h3>NPM Script Delegation</h3>
+<p><strong>Pattern</strong>: Move command logic to npm scripts, keep Claude commands minimal</p>
+<h4>Before (264 lines, ~3000 tokens)</h4>
+<div class="highlight"><pre><span></span><code><span class="gh"># .claude/commands/hygiene.md</span>
+&lt;bash&gt;
+<span class="gh"># Check for TypeScript errors</span>
+npx tsc --noEmit
+
+<span class="gh"># Run ESLint</span>
+npx eslint . --fix
+
+<span class="gh"># Check for security vulnerabilities</span>
+npm audit
+
+<span class="gh"># ... 250+ more lines of logic</span>
+&lt;/bash&gt;
+</code></pre></div>
+<h4>After (30 lines, ~300 tokens)</h4>
+<div class="highlight"><pre><span></span><code><span class="gh"># .claude/commands/hygiene.md</span>
+&lt;bash&gt;
+npm run hygiene:full --silent
+&lt;/bash&gt;
+</code></pre></div>
+<h4>Implementation in package.json</h4>
+<div class="highlight"><pre><span></span><code><span class="p">{</span>
+<span class="w">  </span><span class="nt">&quot;scripts&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="nt">&quot;hygiene:full&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;npm run typecheck &amp;&amp; npm run lint:fix &amp;&amp; npm audit&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;typecheck&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;tsc --noEmit&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;lint:fix&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;eslint . --fix&quot;</span>
+<span class="w">  </span><span class="p">}</span>
+<span class="p">}</span>
+</code></pre></div>
+<p><strong>Result</strong>: 87-91% token reduction across all commands</p>
+<h3>Token Budget Strategy</h3>
+<table>
+<thead>
+<tr>
+<th>Task Type</th>
+<th>Token Budget</th>
+<th>Message Count</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Bug Fix</td>
+<td>5K-10K</td>
+<td>10-30</td>
+</tr>
+<tr>
+<td>Small Feature</td>
+<td>10K-30K</td>
+<td>30-80</td>
+</tr>
+<tr>
+<td>Major Feature</td>
+<td>30K-100K</td>
+<td>100-300</td>
+</tr>
+<tr>
+<td>Architecture Change</td>
+<td>100K-200K</td>
+<td>200-500</td>
+</tr>
+</tbody>
+</table>
+<h3>Batching File Operations</h3>
+<p><strong>Anti-pattern</strong>: Reading files one at a time
+<div class="highlight"><pre><span></span><code>Read file1.js
+Read file2.js
+Read file3.js
+</code></pre></div></p>
+<p><strong>Pattern</strong>: Batch related reads
+<div class="highlight"><pre><span></span><code>Read file1.js, file2.js, file3.js in parallel
+</code></pre></div></p>
+<hr>
+<h2>Context Management</h2>
+<h3>Checkpoint System</h3>
+<p><strong>Pattern</strong>: Regular context checkpoints prevent overload</p>
+<h4>Checkpoint Triggers</h4>
+<ol>
+<li><strong>Time-based</strong>: Every 30 minutes</li>
+<li><strong>Interaction-based</strong>: Every 20-30 messages</li>
+<li><strong>Complexity-based</strong>: After major architecture decisions</li>
+<li><strong>Error-based</strong>: After recovering from significant errors</li>
+</ol>
+<h4>Checkpoint Actions</h4>
+<div class="highlight"><pre><span></span><code><span class="c1"># Save current state</span>
+git<span class="w"> </span>stash
+git<span class="w"> </span>checkout<span class="w"> </span>-b<span class="w"> </span>checkpoint-<span class="k">$(</span>date<span class="w"> </span>+%s<span class="k">)</span>
+git<span class="w"> </span>stash<span class="w"> </span>pop
+git<span class="w"> </span>add<span class="w"> </span>-A
+git<span class="w"> </span>commit<span class="w"> </span>-m<span class="w"> </span><span class="s2">&quot;checkpoint: </span><span class="k">$(</span>date<span class="k">)</span><span class="s2">&quot;</span>
+
+<span class="c1"># Document decisions</span>
+<span class="c1"># Create checkpoint as GitHub issue comment</span>
+gh<span class="w"> </span>issue<span class="w"> </span>comment<span class="w"> </span><span class="m">1</span><span class="w"> </span>--body<span class="w"> </span><span class="s2">&quot;## Checkpoint </span><span class="k">$(</span>date<span class="k">)</span>
+<span class="s2">- Completed: X, Y, Z</span>
+<span class="s2">- Next: A, B, C&quot;</span>
+
+<span class="c1"># Compact if needed</span>
+<span class="k">if</span><span class="w"> </span><span class="o">[</span><span class="w"> </span><span class="nv">$INTERACTION_COUNT</span><span class="w"> </span>-gt<span class="w"> </span><span class="m">30</span><span class="w"> </span><span class="o">]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">  </span><span class="nb">echo</span><span class="w"> </span><span class="s2">&quot;Consider compacting context&quot;</span>
+<span class="k">fi</span>
+</code></pre></div>
+<h3>Context Preservation</h3>
+<p><strong>Pattern</strong>: Save critical information before compaction</p>
+<div class="highlight"><pre><span></span><code><span class="gh"># Before compacting, always save:</span>
+<span class="k">1.</span> Session transcript
+<span class="k">2.</span> Git history
+<span class="k">3.</span> Key decisions
+<span class="k">4.</span> Learned patterns
+<span class="k">5.</span> Next actions
+</code></pre></div>
+<h3>Context Window Optimization</h3>
+<div class="highlight"><pre><span></span><code><span class="c1">// Priority levels for context</span>
+<span class="kd">const</span><span class="w"> </span><span class="nx">CONTEXT_PRIORITY</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">{</span>
+<span class="w">  </span><span class="nx">CRITICAL</span><span class="o">:</span><span class="w"> </span><span class="p">[</span>
+<span class="w">    </span><span class="s1">&#39;Current task requirements&#39;</span><span class="p">,</span>
+<span class="w">    </span><span class="s1">&#39;Recent errors and fixes&#39;</span><span class="p">,</span>
+<span class="w">    </span><span class="s1">&#39;Active file contents&#39;</span>
+<span class="w">  </span><span class="p">],</span>
+<span class="w">  </span><span class="nx">HIGH</span><span class="o">:</span><span class="w"> </span><span class="p">[</span>
+<span class="w">    </span><span class="s1">&#39;Related file contents&#39;</span><span class="p">,</span>
+<span class="w">    </span><span class="s1">&#39;Recent git commits&#39;</span><span class="p">,</span>
+<span class="w">    </span><span class="s1">&#39;Project structure&#39;</span>
+<span class="w">  </span><span class="p">],</span>
+<span class="w">  </span><span class="nx">MEDIUM</span><span class="o">:</span><span class="w"> </span><span class="p">[</span>
+<span class="w">    </span><span class="s1">&#39;Documentation&#39;</span><span class="p">,</span>
+<span class="w">    </span><span class="s1">&#39;Test results&#39;</span><span class="p">,</span>
+<span class="w">    </span><span class="s1">&#39;Dependencies&#39;</span>
+<span class="w">  </span><span class="p">],</span>
+<span class="w">  </span><span class="nx">LOW</span><span class="o">:</span><span class="w"> </span><span class="p">[</span>
+<span class="w">    </span><span class="s1">&#39;Historical commits&#39;</span><span class="p">,</span>
+<span class="w">    </span><span class="s1">&#39;Archived decisions&#39;</span><span class="p">,</span>
+<span class="w">    </span><span class="s1">&#39;Old conversations&#39;</span>
+<span class="w">  </span><span class="p">]</span>
+<span class="p">};</span>
+</code></pre></div>
+<hr>
+<h2>Command Architecture</h2>
+<h3>Subdirectory Organization Pattern</h3>
+<p><strong>Pattern</strong>: Organize command variants using subdirectories</p>
+<div class="highlight"><pre><span></span><code>.claude/commands/
+├── hygiene.md              # Minimal, token-efficient (default)
+├── commit.md               # Minimal version
+├── todo.md                 # Minimal version
+└── detailed/
+    ├── hygiene.md          # Verbose, comprehensive (fallback)
+    ├── commit.md           # Detailed version
+    └── todo.md             # Detailed version
+</code></pre></div>
+<h3>Command Naming Conventions</h3>
+<table>
+<thead>
+<tr>
+<th>Type</th>
+<th>Pattern</th>
+<th>Example</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Action</td>
+<td>verb</td>
+<td><code>commit</code>, <code>test</code>, <code>deploy</code></td>
+</tr>
+<tr>
+<td>Query</td>
+<td>noun</td>
+<td><code>status</code>, <code>metrics</code>, <code>report</code></td>
+</tr>
+<tr>
+<td>Management</td>
+<td>verb-noun</td>
+<td><code>update-docs</code>, <code>check-quality</code></td>
+</tr>
+<tr>
+<td>Meta</td>
+<td>meta-action</td>
+<td><code>token-check</code>, <code>session-save</code></td>
+</tr>
+</tbody>
+</table>
+<h3>Command Discovery</h3>
+<div class="highlight"><pre><span></span><code><span class="c1"># Users can discover available commands</span>
+ls<span class="w"> </span>.claude/commands/*.md<span class="w"> </span><span class="p">|</span><span class="w"> </span>sed<span class="w"> </span><span class="s1">&#39;s/.*\///&#39;</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>sed<span class="w"> </span><span class="s1">&#39;s/\.md//&#39;</span>
+
+<span class="c1"># Users can check for detailed versions</span>
+ls<span class="w"> </span>.claude/commands/detailed/*.md<span class="w"> </span><span class="m">2</span>&gt;/dev/null
+</code></pre></div>
+<hr>
+<h2>Living Reference Pattern</h2>
+<h3>Principles</h3>
+<ol>
+<li><strong>Dogfooding</strong>: Repository uses its own commands</li>
+<li><strong>Proof by Example</strong>: Every pattern is demonstrated</li>
+<li><strong>Evolution Through Use</strong>: Commands improve through actual usage</li>
+<li><strong>Reality Over Theory</strong>: Practical implementation over theoretical design</li>
+</ol>
+<h3>Implementation Strategy</h3>
+<div class="highlight"><pre><span></span><code>graph TD
+    A[Template Repository] --&gt;|Transform| B[Living Reference]
+    B --&gt; C[Use Own Commands]
+    C --&gt; D[Discover Issues]
+    D --&gt; E[Fix &amp; Improve]
+    E --&gt; C
+    B --&gt; F[Document Patterns]
+    F --&gt; G[Share Learnings]
+</code></pre></div>
+<h3>Success Metrics</h3>
+<ul>
+<li>Commands used: 100% coverage</li>
+<li>Self-updates performed: Daily</li>
+<li>Pattern validations: Every commit</li>
+<li>Documentation accuracy: Auto-verified</li>
+</ul>
+<hr>
+<h2>Self-Documentation System</h2>
+<h3>Auto-Generation Pattern</h3>
+<p><strong>Pattern</strong>: Commands generate their own documentation</p>
+<div class="highlight"><pre><span></span><code><span class="c1"># Command updates its own docs</span>
+npm<span class="w"> </span>run<span class="w"> </span>docs:generate<span class="w"> </span>--<span class="w"> </span>--command<span class="o">=</span>hygiene
+
+<span class="c1"># Verify documentation</span>
+npm<span class="w"> </span>run<span class="w"> </span>docs:validate<span class="w"> </span>--<span class="w"> </span>--command<span class="o">=</span>hygiene
+
+<span class="c1"># Update all documentation</span>
+npm<span class="w"> </span>run<span class="w"> </span>docs:update<span class="w"> </span>--<span class="w"> </span>--all
+</code></pre></div>
+<h3>Documentation Hierarchy</h3>
+<div class="highlight"><pre><span></span><code>docs/
+├── COMMAND_CATALOG.md      # Auto-generated from commands
+├── BEST_PRACTICES.md       # Curated with citations
+├── CLAUDE_PATTERNS.md      # This file - discovered patterns
+├── TOKEN_EFFICIENCY.md     # Metrics and strategies
+└── SELF_UPDATING.md        # How docs update themselves
+</code></pre></div>
+<h3>Citation Management</h3>
+<div class="highlight"><pre><span></span><code>&lt;!-- Pattern for citations --&gt;
+[Statement needing citation]^[1]
+
+&lt;!-- References --&gt;
+[<span class="nl">1</span>]: <span class="na">https://source.url &quot;Source Title&quot;</span>
+</code></pre></div>
+<h3>Validation System</h3>
+<div class="highlight"><pre><span></span><code><span class="c1">// Validate all citations are valid</span>
+<span class="k">async</span><span class="w"> </span><span class="kd">function</span><span class="w"> </span><span class="nx">validateCitations</span><span class="p">(</span><span class="nx">file</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">  </span><span class="kd">const</span><span class="w"> </span><span class="nx">citations</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nx">extractCitations</span><span class="p">(</span><span class="nx">file</span><span class="p">);</span>
+<span class="w">  </span><span class="k">for</span><span class="w"> </span><span class="p">(</span><span class="kd">const</span><span class="w"> </span><span class="nx">citation</span><span class="w"> </span><span class="k">of</span><span class="w"> </span><span class="nx">citations</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="kd">const</span><span class="w"> </span><span class="nx">isValid</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">await</span><span class="w"> </span><span class="nx">checkUrl</span><span class="p">(</span><span class="nx">citation</span><span class="p">.</span><span class="nx">url</span><span class="p">);</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="o">!</span><span class="nx">isValid</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">      </span><span class="nx">console</span><span class="p">.</span><span class="nx">error</span><span class="p">(</span><span class="sb">`Invalid citation: </span><span class="si">${</span><span class="nx">citation</span><span class="p">.</span><span class="nx">url</span><span class="si">}</span><span class="sb">`</span><span class="p">);</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="w">  </span><span class="p">}</span>
+<span class="p">}</span>
+</code></pre></div>
+<hr>
+<h2>Session Management</h2>
+<h3>Session Lifecycle</h3>
+<div class="highlight"><pre><span></span><code>graph LR
+    A[Start] --&gt; B[Load Context]
+    B --&gt; C[Plan Tasks]
+    C --&gt; D[Execute]
+    D --&gt; E{Checkpoint?}
+    E --&gt;|Yes| F[Save State]
+    E --&gt;|No| D
+    F --&gt; G{Continue?}
+    G --&gt;|Yes| D
+    G --&gt;|No| H[Document]
+    H --&gt; I[End]
+</code></pre></div>
+<h3>Session Patterns</h3>
+<h4>1. Planning Phase</h4>
+<div class="highlight"><pre><span></span><code><span class="k">1.</span> Read CLAUDE.md for project context
+<span class="k">2.</span> Check GitHub issues for current state  
+<span class="k">3.</span> Review recent git history
+<span class="k">4.</span> Create todo list
+<span class="k">5.</span> Estimate token usage
+</code></pre></div>
+<h4>2. Execution Phase</h4>
+<div class="highlight"><pre><span></span><code><span class="k">1.</span> Mark todo as in_progress
+<span class="k">2.</span> Execute task
+<span class="k">3.</span> Test immediately
+<span class="k">4.</span> Mark as completed
+<span class="k">5.</span> Update metrics
+</code></pre></div>
+<h4>3. Reflection Phase</h4>
+<div class="highlight"><pre><span></span><code><span class="k">1.</span> Document learnings
+<span class="k">2.</span> Update patterns
+<span class="k">3.</span> Save session transcript
+<span class="k">4.</span> Plan next session
+</code></pre></div>
+<h3>Recovery Patterns</h3>
+<p><strong>Pattern</strong>: Graceful recovery from errors</p>
+<div class="highlight"><pre><span></span><code><span class="c1"># Save state before risky operations</span>
+git<span class="w"> </span>stash<span class="w"> </span>save<span class="w"> </span><span class="s2">&quot;Before risky operation&quot;</span>
+
+<span class="c1"># Attempt operation</span>
+<span class="k">if</span><span class="w"> </span>!<span class="w"> </span>npm<span class="w"> </span>run<span class="w"> </span>risky:operation<span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">  </span><span class="c1"># Recover</span>
+<span class="w">  </span>git<span class="w"> </span>stash<span class="w"> </span>pop
+<span class="w">  </span><span class="nb">echo</span><span class="w"> </span><span class="s2">&quot;Operation failed, state restored&quot;</span>
+
+<span class="w">  </span><span class="c1"># Document failure</span>
+<span class="w">  </span><span class="nb">echo</span><span class="w"> </span><span class="s2">&quot;## Failed: risky:operation&quot;</span><span class="w"> </span>&gt;&gt;<span class="w"> </span>LEARNINGS.md
+<span class="w">  </span><span class="nb">echo</span><span class="w"> </span><span class="s2">&quot;Reason: </span><span class="nv">$ERROR</span><span class="s2">&quot;</span><span class="w"> </span>&gt;&gt;<span class="w"> </span>LEARNINGS.md
+<span class="k">fi</span>
+</code></pre></div>
+<hr>
+<h2>Anti-patterns to Avoid</h2>
+<h3>1. Context Tunnel Vision</h3>
+<p><strong>Anti-pattern</strong>: Losing sight of broader context
+<div class="highlight"><pre><span></span><code>BAD: Deep diving into implementation without checking requirements
+GOOD: Regularly refer back to original task and goals
+</code></pre></div></p>
+<h3>2. Assumption Cascade</h3>
+<p><strong>Anti-pattern</strong>: Building on unverified assumptions
+<div class="highlight"><pre><span></span><code>BAD: Assuming file exists -&gt; Making changes -&gt; Discovering it doesn&#39;t
+GOOD: Verify first -&gt; Plan -&gt; Execute
+</code></pre></div></p>
+<h3>3. Commit Sprawl</h3>
+<p><strong>Anti-pattern</strong>: Large, unfocused commits
+<div class="highlight"><pre><span></span><code>BAD: 1000+ line commits mixing features
+GOOD: &lt;200 line atomic commits with single purpose
+</code></pre></div></p>
+<h3>4. Documentation Debt</h3>
+<p><strong>Anti-pattern</strong>: Postponing documentation
+<div class="highlight"><pre><span></span><code>BAD: &quot;I&#39;ll document this later&quot;
+GOOD: Document as you go, update in real-time
+</code></pre></div></p>
+<h3>5. Test Skipping</h3>
+<p><strong>Anti-pattern</strong>: Moving to next task without testing
+<div class="highlight"><pre><span></span><code>BAD: Implement feature -&gt; Move to next
+GOOD: Implement -&gt; Test -&gt; Fix -&gt; Move
+</code></pre></div></p>
+<hr>
+<h2>Pattern Evolution</h2>
+<h3>Discovery Process</h3>
+<ol>
+<li><strong>Observe</strong>: Notice recurring situations</li>
+<li><strong>Document</strong>: Capture in LEARNINGS.md</li>
+<li><strong>Abstract</strong>: Extract general pattern</li>
+<li><strong>Validate</strong>: Test across multiple uses</li>
+<li><strong>Codify</strong>: Add to this document</li>
+</ol>
+<h3>Pattern Maturity Levels</h3>
+<table>
+<thead>
+<tr>
+<th>Level</th>
+<th>Description</th>
+<th>Action</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>0 - Observation</td>
+<td>Noticed once</td>
+<td>Document in LEARNINGS</td>
+</tr>
+<tr>
+<td>1 - Hypothesis</td>
+<td>Seen 2-3 times</td>
+<td>Track occurrences</td>
+</tr>
+<tr>
+<td>2 - Pattern</td>
+<td>Proven useful</td>
+<td>Add to patterns</td>
+</tr>
+<tr>
+<td>3 - Best Practice</td>
+<td>Widely applicable</td>
+<td>Promote to BEST_PRACTICES</td>
+</tr>
+<tr>
+<td>4 - Standard</td>
+<td>Essential pattern</td>
+<td>Enforce via tooling</td>
+</tr>
+</tbody>
+</table>
+<hr>
+<h2>Session Preservation Pattern</h2>
+<h3>Overview</h3>
+<p>Session preservation captures raw conversation transcripts for future reference. This is an optional feature that some users find valuable for learning and analysis.</p>
+<h3>Implementation</h3>
+<div class="highlight"><pre><span></span><code><span class="c1"># Save current session</span>
+npm<span class="w"> </span>run<span class="w"> </span>session:save
+
+<span class="c1"># Save with description</span>
+npm<span class="w"> </span>run<span class="w"> </span>session:save<span class="w"> </span>--<span class="w"> </span><span class="s2">&quot;feature-implementation&quot;</span>
+
+<span class="c1"># Save delta only (changes since last save)</span>
+npm<span class="w"> </span>run<span class="w"> </span>session:delta
+
+<span class="c1"># List saved sessions</span>
+npm<span class="w"> </span>run<span class="w"> </span>session:list
+</code></pre></div>
+<h3>Directory Structure</h3>
+<div class="highlight"><pre><span></span><code>session-history/
+├── YYYY-MM-DD/
+│   ├── session-NNN-HHMM.txt         # Full session
+│   ├── session-NNN-HHMM.meta.json   # Metadata (Claude version, etc.)
+│   └── session-NNN-HHMM-delta.txt   # Delta save
+└── .last-save                       # Tracks last save for deltas
+</code></pre></div>
+<h3>Metadata Tracking</h3>
+<p>Each session automatically captures:
+- Claude Code version
+- Timestamp
+- Session type (full/delta)
+- Environment context</p>
+<h3>Use Cases</h3>
+<ul>
+<li><strong>Learning Analysis</strong>: Review problem-solving approaches</li>
+<li><strong>Pattern Discovery</strong>: Identify recurring solutions</li>
+<li><strong>Knowledge Base</strong>: Build personal reference library</li>
+<li><strong>Team Sharing</strong>: Share successful debugging sessions</li>
+</ul>
+<h3>Living Reference Practice</h3>
+<p>This repository demonstrates session preservation by saving its own development sessions. These provide real examples of the feature in use.</p>
+<hr>
+<h2>Meta-Patterns</h2>
+<h3>The Pattern of Patterns</h3>
+<ul>
+<li>Patterns emerge from repetition</li>
+<li>Documentation crystallizes patterns</li>
+<li>Automation codifies patterns</li>
+<li>Evolution refines patterns</li>
+</ul>
+<h3>Continuous Improvement</h3>
+<div class="highlight"><pre><span></span><code>graph TD
+    A[Use] --&gt; B[Observe]
+    B --&gt; C[Document]
+    C --&gt; D[Improve]
+    D --&gt; A
+</code></pre></div>
+<hr>
+<p><em>Last updated: 2025-01-16</em>
+<em>Pattern count: 16 major patterns documented</em>
+<em>Next review: After next significant session</em></p>
+
+    <footer>
+        <p>Generated from: CLAUDE_PATTERNS.md</p>
+        <p>Last updated: 2026-01-22 15:39:59</p>
+        <p>Using MathJax v3 for mathematical notation rendering.</p>
+    </footer>
+</body>
+</html>

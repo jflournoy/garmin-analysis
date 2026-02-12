@@ -1,0 +1,573 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Bayesian Gaussian Process Model for Weight Analysis</title>
+
+    <!-- MathJax Configuration -->
+    <script>
+    MathJax = {
+        tex: {
+            inlineMath: [['$', '$'], ['\\(', '\\)']],
+            displayMath: [['$$', '$$'], ['\\[', '\\]']],
+            processEscapes: true,
+            processEnvironments: true
+        },
+        options: {
+            skipHtmlTags: ['script', 'noscript', 'style', 'textarea', 'pre']
+        }
+    };
+    </script>
+
+    <!-- Load MathJax -->
+    <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" async></script>
+
+    <!-- Basic styling -->
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        h1, h2, h3, h4 {
+            color: #2c3e50;
+            margin-top: 1.5em;
+            border-bottom: 1px solid #eee;
+            padding-bottom: 0.3em;
+        }
+
+        h1 { border-bottom: 2px solid #3498db; }
+
+        code {
+            background-color: #f8f8f8;
+            padding: 2px 4px;
+            border-radius: 3px;
+            font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
+        }
+
+        pre {
+            background-color: #f8f8f8;
+            padding: 15px;
+            border-radius: 5px;
+            overflow-x: auto;
+            border-left: 4px solid #3498db;
+        }
+
+        table {
+            border-collapse: collapse;
+            width: 100%;
+            margin: 1em 0;
+        }
+
+        th, td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: left;
+        }
+
+        th {
+            background-color: #f2f2f2;
+            font-weight: bold;
+        }
+
+        tr:nth-child(even) { background-color: #f9f9f9; }
+
+        .math, .arithmatex {
+            overflow-x: auto;
+            overflow-y: hidden;
+        }
+
+        .mjx-chtml { outline: none; }
+
+        footer {
+            margin-top: 3em;
+            padding-top: 1em;
+            border-top: 1px solid #eee;
+            color: #7f8c8d;
+            font-size: 0.9em;
+        }
+    </style>
+</head>
+<body>
+    <h1>Self-Updating Documentation Guide</h1>
+<!-- 
+This document is self-updating. To regenerate:
+In Claude Code: /docs update self-updating
+Last updated: 2025-01-16
+-->
+
+<h2>Overview</h2>
+<p>This repository implements a self-documenting system where all documentation can be regenerated and updated using Claude Code commands. This ensures documentation stays current with the codebase and best practices.</p>
+<h2>Quick Reference</h2>
+<div class="highlight"><pre><span></span><code><span class="c1"># Update all documentation</span>
+/docs<span class="w"> </span>update<span class="w"> </span>all
+
+<span class="c1"># Update specific documentation</span>
+/docs<span class="w"> </span>update<span class="w"> </span>best-practices
+/docs<span class="w"> </span>update<span class="w"> </span>catalog
+/docs<span class="w"> </span>update<span class="w"> </span>readme
+
+<span class="c1"># Validate documentation</span>
+/docs<span class="w"> </span>check-citations
+/docs<span class="w"> </span>validate-links
+/docs<span class="w"> </span>check-examples
+</code></pre></div>
+<h2>How Self-Documentation Works</h2>
+<h3>1. Documentation Headers</h3>
+<p>Every documentation file includes a self-update header:</p>
+<div class="highlight"><pre><span></span><code>&lt;!-- 
+This document is self-updating. To regenerate:
+In Claude Code: /docs update [document-name]
+Last updated: YYYY-MM-DD
+--&gt;
+</code></pre></div>
+<p>This header:
+- Tells users how to update the document
+- Tracks when it was last updated
+- Provides the exact command to run</p>
+<h3>2. The <code>/docs</code> Command</h3>
+<p>The enhanced <code>/docs</code> command (<a href=".claude/commands/docs.md">view command</a>) supports:</p>
+<h4>Updating Documentation</h4>
+<div class="highlight"><pre><span></span><code>/docs<span class="w"> </span>update<span class="w"> </span>all<span class="w">              </span><span class="c1"># Regenerate all documentation</span>
+/docs<span class="w"> </span>update<span class="w"> </span>best-practices<span class="w">   </span><span class="c1"># Update BEST_PRACTICES.md</span>
+/docs<span class="w"> </span>update<span class="w"> </span>catalog<span class="w">         </span><span class="c1"># Update COMMAND_CATALOG.md</span>
+/docs<span class="w"> </span>update<span class="w"> </span>readme<span class="w">          </span><span class="c1"># Update README.md</span>
+/docs<span class="w"> </span>update<span class="w"> </span>metrics<span class="w">         </span><span class="c1"># Update metrics and statistics</span>
+</code></pre></div>
+<h4>Validation</h4>
+<div class="highlight"><pre><span></span><code>/docs<span class="w"> </span>check-citations<span class="w">        </span><span class="c1"># Validate all citations are current</span>
+/docs<span class="w"> </span>validate-links<span class="w">         </span><span class="c1"># Check all internal links work</span>
+/docs<span class="w"> </span>check-examples<span class="w">         </span><span class="c1"># Verify code examples run</span>
+/docs<span class="w"> </span>check-counts<span class="w">          </span><span class="c1"># Verify command counts are accurate</span>
+</code></pre></div>
+<h4>Adding Content</h4>
+<div class="highlight"><pre><span></span><code>/docs<span class="w"> </span>add-example<span class="w"> </span>hygiene<span class="w">    </span><span class="c1"># Add real usage example for /hygiene</span>
+/docs<span class="w"> </span>add-citation<span class="w"> </span><span class="s2">&quot;source&quot;</span><span class="w">  </span><span class="c1"># Add new citation to references</span>
+/docs<span class="w"> </span>generate-metrics<span class="w">       </span><span class="c1"># Generate usage metrics report</span>
+</code></pre></div>
+<h3>3. Automatic Updates</h3>
+<p>Documentation updates automatically when:
+- <strong>Pre-commit</strong>: Command counts in README
+- <strong>Post-commit</strong>: Usage metrics logged
+- <strong>On PR</strong>: Documentation consistency validated
+- <strong>Weekly</strong>: Citation validity checked (via GitHub Actions)
+- <strong>Monthly</strong>: Full documentation regeneration</p>
+<h2>Documentation Structure</h2>
+<h3>Core Documents</h3>
+<table>
+<thead>
+<tr>
+<th>Document</th>
+<th>Purpose</th>
+<th>Update Command</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>README.md</code></td>
+<td>Repository overview</td>
+<td><code>/docs update readme</code></td>
+</tr>
+<tr>
+<td><code>docs/BEST_PRACTICES.md</code></td>
+<td>Claude Code best practices</td>
+<td><code>/docs update best-practices</code></td>
+</tr>
+<tr>
+<td><code>docs/COMMAND_CATALOG.md</code></td>
+<td>All commands reference</td>
+<td><code>/docs update catalog</code></td>
+</tr>
+<tr>
+<td><code>docs/TOKEN_EFFICIENCY.md</code></td>
+<td>Token optimization guide</td>
+<td><code>/docs update token-efficiency</code></td>
+</tr>
+<tr>
+<td><code>docs/SELF_UPDATING.md</code></td>
+<td>This guide</td>
+<td><code>/docs update self-updating</code></td>
+</tr>
+</tbody>
+</table>
+<h3>Self-Tracking Files</h3>
+<table>
+<thead>
+<tr>
+<th>File</th>
+<th>Purpose</th>
+<th>Auto-Updates</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>.claude/metrics.json</code></td>
+<td>Usage statistics</td>
+<td>On each command use</td>
+</tr>
+<tr>
+<td><code>.claude/learnings.md</code></td>
+<td>Captured insights</td>
+<td>Via <code>/learn</code> command</td>
+</tr>
+<tr>
+<td><code>.claude/documentation-log.json</code></td>
+<td>Update history</td>
+<td>On each doc update</td>
+</tr>
+<tr>
+<td><code>GitHub Issues</code></td>
+<td>Current tasks</td>
+<td>Via <code>/todo</code> command</td>
+</tr>
+</tbody>
+</table>
+<h2>Updating Specific Sections</h2>
+<h3>Updating Command Catalog</h3>
+<p>The command catalog auto-generates from:
+1. Command files in <code>.claude/commands/</code>
+2. Usage examples from git history
+3. Metrics from <code>.claude/metrics.json</code></p>
+<div class="highlight"><pre><span></span><code><span class="c1"># Full catalog regeneration</span>
+/docs<span class="w"> </span>update<span class="w"> </span>catalog
+
+<span class="c1"># Add new command documentation</span>
+/docs<span class="w"> </span>add-command<span class="w"> </span>new-command-name
+
+<span class="c1"># Update specific command section</span>
+/docs<span class="w"> </span>update-command<span class="w"> </span>hygiene
+</code></pre></div>
+<h3>Updating Best Practices</h3>
+<p>Best practices update from:
+1. Latest Anthropic documentation
+2. Community patterns
+3. Measured metrics from this repo</p>
+<div class="highlight"><pre><span></span><code><span class="c1"># Update all best practices</span>
+/docs<span class="w"> </span>update<span class="w"> </span>best-practices
+
+<span class="c1"># Update specific section</span>
+/docs<span class="w"> </span>update<span class="w"> </span>best-practices<span class="w"> </span>--section<span class="w"> </span><span class="s2">&quot;Token Efficiency&quot;</span>
+
+<span class="c1"># Add new best practice</span>
+/docs<span class="w"> </span>add-practice<span class="w"> </span><span class="s2">&quot;New Pattern&quot;</span><span class="w"> </span>--citation<span class="w"> </span><span class="s2">&quot;source&quot;</span>
+</code></pre></div>
+<h3>Updating Metrics</h3>
+<p>Metrics auto-generate from:
+1. Git commit history
+2. Command usage logs
+3. Token consumption tracking</p>
+<div class="highlight"><pre><span></span><code><span class="c1"># Generate metrics report</span>
+/docs<span class="w"> </span>generate-metrics
+
+<span class="c1"># Update specific metric</span>
+/docs<span class="w"> </span>update-metric<span class="w"> </span>token-savings
+
+<span class="c1"># Generate comparison report</span>
+/docs<span class="w"> </span>compare-metrics<span class="w"> </span>--before<span class="w"> </span><span class="s2">&quot;2025-01-01&quot;</span>
+</code></pre></div>
+<h2>Adding New Documentation</h2>
+<h3>Step 1: Create Document with Header</h3>
+<div class="highlight"><pre><span></span><code>&lt;!-- 
+This document is self-updating. To regenerate:
+In Claude Code: /docs update [your-doc-name]
+Last updated: 2025-01-16
+--&gt;
+
+<span class="gh"># Your Document Title</span>
+
+Content...
+</code></pre></div>
+<h3>Step 2: Register in <code>/docs</code> Command</h3>
+<p>Add to <code>.claude/commands/docs.md</code>:
+<div class="highlight"><pre><span></span><code><span class="k">case</span><span class="w"> </span><span class="s2">&quot;your-doc-name&quot;</span>:
+<span class="w">  </span>regenerate_your_doc
+<span class="w">  </span><span class="p">;;</span>
+</code></pre></div></p>
+<h3>Step 3: Add to Update Cycle</h3>
+<p>Include in <code>/docs update all</code>:
+<div class="highlight"><pre><span></span><code>/docs<span class="w"> </span>update<span class="w"> </span>your-doc-name
+</code></pre></div></p>
+<h2>Validation System</h2>
+<h3>Citation Validation</h3>
+<p>All citations must be:
+- Current (checked weekly)
+- Accessible (valid URLs)
+- Properly formatted
+- Attributed correctly</p>
+<div class="highlight"><pre><span></span><code><span class="c1"># Check all citations</span>
+/docs<span class="w"> </span>check-citations
+
+<span class="c1"># Update broken citations</span>
+/docs<span class="w"> </span>fix-citations
+
+<span class="c1"># Add citation</span>
+/docs<span class="w"> </span>add-citation<span class="w"> </span><span class="s2">&quot;Author, Title, URL, Date&quot;</span>
+</code></pre></div>
+<h3>Link Validation</h3>
+<p>Internal links are validated for:
+- File existence
+- Anchor validity
+- Correct paths
+- No orphaned documents</p>
+<div class="highlight"><pre><span></span><code><span class="c1"># Check all links</span>
+/docs<span class="w"> </span>validate-links
+
+<span class="c1"># Fix broken links</span>
+/docs<span class="w"> </span>fix-links
+
+<span class="c1"># Generate link map</span>
+/docs<span class="w"> </span>link-map
+</code></pre></div>
+<h3>Example Validation</h3>
+<p>Code examples must:
+- Run without errors
+- Match current API
+- Include expected output
+- Have proper formatting</p>
+<div class="highlight"><pre><span></span><code><span class="c1"># Test all examples</span>
+/docs<span class="w"> </span>check-examples
+
+<span class="c1"># Update example</span>
+/docs<span class="w"> </span>update-example<span class="w"> </span><span class="s2">&quot;example-name&quot;</span>
+
+<span class="c1"># Extract example from git history</span>
+/docs<span class="w"> </span>extract-example<span class="w"> </span><span class="s2">&quot;commit-hash&quot;</span>
+</code></pre></div>
+<h2>Real-World Examples</h2>
+<h3>Example 1: After Adding New Command</h3>
+<div class="highlight"><pre><span></span><code><span class="c1"># 1. Create new command</span>
+<span class="nb">echo</span><span class="w"> </span><span class="s2">&quot;# New Command&quot;</span><span class="w"> </span>&gt;<span class="w"> </span>.claude/commands/new-command.md
+
+<span class="c1"># 2. Update documentation</span>
+/docs<span class="w"> </span>update<span class="w"> </span>catalog<span class="w">        </span><span class="c1"># Add to catalog</span>
+/docs<span class="w"> </span>update<span class="w"> </span>readme<span class="w">         </span><span class="c1"># Update command count</span>
+/docs<span class="w"> </span>generate-metrics<span class="w">      </span><span class="c1"># Include in metrics</span>
+
+<span class="c1"># 3. Validate</span>
+/docs<span class="w"> </span>validate-all
+</code></pre></div>
+<h3>Example 2: Weekly Maintenance</h3>
+<div class="highlight"><pre><span></span><code><span class="c1"># Run weekly maintenance</span>
+/docs<span class="w"> </span>maintenance
+
+<span class="c1"># This automatically:</span>
+<span class="c1"># - Checks all citations</span>
+<span class="c1"># - Validates all links</span>
+<span class="c1"># - Updates metrics</span>
+<span class="c1"># - Regenerates stale docs</span>
+<span class="c1"># - Creates maintenance report</span>
+</code></pre></div>
+<h3>Example 3: Before Release</h3>
+<div class="highlight"><pre><span></span><code><span class="c1"># Pre-release documentation update</span>
+/docs<span class="w"> </span>prepare-release<span class="w"> </span>v2.1.0
+
+<span class="c1"># This automatically:</span>
+<span class="c1"># - Updates all documentation</span>
+<span class="c1"># - Generates changelog</span>
+<span class="c1"># - Updates version numbers</span>
+<span class="c1"># - Creates release notes</span>
+<span class="c1"># - Validates everything</span>
+</code></pre></div>
+<h2>GitHub Actions Integration</h2>
+<h3>Weekly Documentation Check</h3>
+<p><code>.github/workflows/docs-check.yml</code>:
+<div class="highlight"><pre><span></span><code><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Documentation Check</span>
+<span class="nt">on</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">schedule</span><span class="p">:</span>
+<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">cron</span><span class="p">:</span><span class="w"> </span><span class="s">&#39;0</span><span class="nv"> </span><span class="s">0</span><span class="nv"> </span><span class="s">*</span><span class="nv"> </span><span class="s">*</span><span class="nv"> </span><span class="s">0&#39;</span><span class="w">  </span><span class="c1"># Weekly on Sunday</span>
+<span class="nt">jobs</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">check-docs</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">runs-on</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ubuntu-latest</span>
+<span class="w">    </span><span class="nt">steps</span><span class="p">:</span>
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">uses</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">actions/checkout@v2</span>
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Check Documentation</span>
+<span class="w">        </span><span class="nt">run</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">|</span>
+<span class="w">          </span><span class="no">npx claude-code --command &quot;/docs check-citations&quot;</span>
+<span class="w">          </span><span class="no">npx claude-code --command &quot;/docs validate-links&quot;</span>
+</code></pre></div></p>
+<h3>On Pull Request</h3>
+<p><code>.github/workflows/pr-docs.yml</code>:
+<div class="highlight"><pre><span></span><code><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">PR Documentation Validation</span>
+<span class="nt">on</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">pull_request</span>
+<span class="nt">jobs</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">validate</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">runs-on</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ubuntu-latest</span>
+<span class="w">    </span><span class="nt">steps</span><span class="p">:</span>
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">uses</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">actions/checkout@v2</span>
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Validate Documentation</span>
+<span class="w">        </span><span class="nt">run</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">|</span>
+<span class="w">          </span><span class="no">npx claude-code --command &quot;/docs validate-all&quot;</span>
+</code></pre></div></p>
+<h2>Best Practices for Self-Documentation</h2>
+<h3>1. Always Include Update Headers</h3>
+<p>Every document should start with:
+<div class="highlight"><pre><span></span><code>&lt;!-- 
+This document is self-updating. To regenerate:
+In Claude Code: /docs update [name]
+Last updated: [date]
+--&gt;
+</code></pre></div></p>
+<h3>2. Use Structured Data</h3>
+<p>Store metrics and data in JSON:
+<div class="highlight"><pre><span></span><code><span class="p">{</span>
+<span class="w">  </span><span class="nt">&quot;lastUpdated&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;2025-01-16&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;commandCount&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">23</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;tokenSavings&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">0.87</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;source&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;automatic&quot;</span>
+<span class="p">}</span>
+</code></pre></div></p>
+<h3>3. Track Documentation Changes</h3>
+<p>Log all updates:
+<div class="highlight"><pre><span></span><code><span class="p">{</span>
+<span class="w">  </span><span class="nt">&quot;timestamp&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;2025-01-16T10:00:00Z&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;document&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;BEST_PRACTICES.md&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;action&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;update&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;sections&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">&quot;Token Efficiency&quot;</span><span class="p">],</span>
+<span class="w">  </span><span class="nt">&quot;citations&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="nt">&quot;added&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">2</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;updated&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">1</span><span class="p">]</span>
+<span class="p">}</span>
+</code></pre></div></p>
+<h3>4. Provide Fallbacks</h3>
+<p>Always include manual update instructions:
+<div class="highlight"><pre><span></span><code>To update manually:
+<span class="k">1.</span> Review current content
+<span class="k">2.</span> Check citations
+<span class="k">3.</span> Update examples
+<span class="k">4.</span> Validate links
+<span class="k">5.</span> Update timestamp
+</code></pre></div></p>
+<h3>5. Version Documentation</h3>
+<p>Track documentation versions:
+<div class="highlight"><pre><span></span><code>&lt;!-- Version: 2.1.0 --&gt;
+&lt;!-- Schema: v1 --&gt;
+&lt;!-- Format: CommonMark --&gt;
+</code></pre></div></p>
+<h2>Troubleshooting</h2>
+<h3>Common Issues</h3>
+<p><strong>Documentation won't update</strong>
+<div class="highlight"><pre><span></span><code><span class="c1"># Check permissions</span>
+ls<span class="w"> </span>-la<span class="w"> </span>docs/
+
+<span class="c1"># Force regeneration</span>
+/docs<span class="w"> </span>update<span class="w"> </span><span class="o">[</span>name<span class="o">]</span><span class="w"> </span>--force
+
+<span class="c1"># Check for errors</span>
+/docs<span class="w"> </span>validate<span class="w"> </span><span class="o">[</span>name<span class="o">]</span>
+</code></pre></div></p>
+<p><strong>Citations are broken</strong>
+<div class="highlight"><pre><span></span><code><span class="c1"># List broken citations</span>
+/docs<span class="w"> </span>check-citations<span class="w"> </span>--verbose
+
+<span class="c1"># Update citation URL</span>
+/docs<span class="w"> </span>fix-citation<span class="w"> </span><span class="s2">&quot;old-url&quot;</span><span class="w"> </span><span class="s2">&quot;new-url&quot;</span>
+
+<span class="c1"># Remove invalid citation</span>
+/docs<span class="w"> </span>remove-citation<span class="w"> </span><span class="s2">&quot;citation-id&quot;</span>
+</code></pre></div></p>
+<p><strong>Metrics not generating</strong>
+<div class="highlight"><pre><span></span><code><span class="c1"># Check metrics file</span>
+cat<span class="w"> </span>.claude/metrics.json
+
+<span class="c1"># Regenerate from git history</span>
+/docs<span class="w"> </span>rebuild-metrics
+
+<span class="c1"># Reset metrics</span>
+/docs<span class="w"> </span>reset-metrics<span class="w"> </span>--confirm
+</code></pre></div></p>
+<h2>Advanced Features</h2>
+<h3>Custom Documentation Generators</h3>
+<p>Create custom generators in <code>.claude/generators/</code>:</p>
+<div class="highlight"><pre><span></span><code><span class="c1">// .claude/generators/custom-doc.js</span>
+<span class="nx">module</span><span class="p">.</span><span class="nx">exports</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">{</span>
+<span class="w">  </span><span class="nx">name</span><span class="o">:</span><span class="w"> </span><span class="s1">&#39;custom-doc&#39;</span><span class="p">,</span>
+<span class="w">  </span><span class="nx">generate</span><span class="o">:</span><span class="w"> </span><span class="k">async</span><span class="w"> </span><span class="p">()</span><span class="w"> </span><span class="p">=&gt;</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="c1">// Custom generation logic</span>
+<span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="nx">documentContent</span><span class="p">;</span>
+<span class="w">  </span><span class="p">},</span>
+<span class="w">  </span><span class="nx">validate</span><span class="o">:</span><span class="w"> </span><span class="k">async</span><span class="w"> </span><span class="p">(</span><span class="nx">content</span><span class="p">)</span><span class="w"> </span><span class="p">=&gt;</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="c1">// Validation logic</span>
+<span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="nx">isValid</span><span class="p">;</span>
+<span class="w">  </span><span class="p">}</span>
+<span class="p">};</span>
+</code></pre></div>
+<h3>Documentation Templates</h3>
+<p>Use templates for consistency:</p>
+<div class="highlight"><pre><span></span><code>&lt;!-- .claude/templates/guide-template.md --&gt;
+&lt;!-- 
+This document is self-updating. To regenerate:
+In Claude Code: /docs update {{name}}
+Last updated: {{date}}
+--&gt;
+
+<span class="gh"># {{title}}</span>
+
+<span class="gu">## Overview</span>
+{{overview}}
+
+<span class="gu">## Usage</span>
+{{usage}}
+
+<span class="gu">## Examples</span>
+{{examples}}
+
+<span class="gu">## References</span>
+{{references}}
+</code></pre></div>
+<h3>Metrics Dashboard</h3>
+<p>Generate visual metrics:</p>
+<div class="highlight"><pre><span></span><code><span class="c1"># Generate dashboard</span>
+/docs<span class="w"> </span>dashboard
+
+<span class="c1"># Export metrics</span>
+/docs<span class="w"> </span>export-metrics<span class="w"> </span>--format<span class="w"> </span>csv
+
+<span class="c1"># Compare periods</span>
+/docs<span class="w"> </span>compare<span class="w"> </span>--from<span class="w"> </span><span class="s2">&quot;2025-01-01&quot;</span><span class="w"> </span>--to<span class="w"> </span><span class="s2">&quot;2025-01-16&quot;</span>
+</code></pre></div>
+<h2>Contributing to Documentation</h2>
+<h3>Adding New Self-Updating Features</h3>
+<ol>
+<li><strong>Identify repetitive updates</strong> - What changes frequently?</li>
+<li><strong>Create generator</strong> - Automate the update process</li>
+<li><strong>Add validation</strong> - Ensure quality</li>
+<li><strong>Document the process</strong> - Update this guide</li>
+<li><strong>Test thoroughly</strong> - Verify automation works</li>
+</ol>
+<h3>Documentation Standards</h3>
+<ul>
+<li>All documentation must be self-updating</li>
+<li>Include clear update instructions</li>
+<li>Validate before committing</li>
+<li>Track all changes</li>
+<li>Maintain citation accuracy</li>
+</ul>
+<h2>Future Enhancements</h2>
+<p>Planned improvements:
+- AI-powered documentation suggestions
+- Automatic example extraction from usage
+- Real-time documentation updates
+- Cross-reference validation
+- Multi-language support
+- Documentation versioning</p>
+<h2>References</h2>
+<ol>
+<li><a href="https://docs.anthropic.com/en/docs/claude-code">Claude Code Documentation</a></li>
+<li><a href="https://commonmark.org/">CommonMark Specification</a></li>
+<li><a href="https://semver.org/">Semantic Versioning</a></li>
+<li><a href="https://docs.github.com/en/actions">GitHub Actions Documentation</a></li>
+</ol>
+<hr>
+<p><em>Last updated: 2025-01-16</em>
+<em>Run <code>/docs update self-updating</code> to regenerate.</em></p>
+
+    <footer>
+        <p>Generated from: SELF_UPDATING.md</p>
+        <p>Last updated: 2026-01-22 15:39:59</p>
+        <p>Using MathJax v3 for mathematical notation rendering.</p>
+    </footer>
+</body>
+</html>

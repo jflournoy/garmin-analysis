@@ -1,0 +1,624 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Bayesian Gaussian Process Model for Weight Analysis</title>
+
+    <!-- MathJax Configuration -->
+    <script>
+    MathJax = {
+        tex: {
+            inlineMath: [['$', '$'], ['\\(', '\\)']],
+            displayMath: [['$$', '$$'], ['\\[', '\\]']],
+            processEscapes: true,
+            processEnvironments: true
+        },
+        options: {
+            skipHtmlTags: ['script', 'noscript', 'style', 'textarea', 'pre']
+        }
+    };
+    </script>
+
+    <!-- Load MathJax -->
+    <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" async></script>
+
+    <!-- Basic styling -->
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        h1, h2, h3, h4 {
+            color: #2c3e50;
+            margin-top: 1.5em;
+            border-bottom: 1px solid #eee;
+            padding-bottom: 0.3em;
+        }
+
+        h1 { border-bottom: 2px solid #3498db; }
+
+        code {
+            background-color: #f8f8f8;
+            padding: 2px 4px;
+            border-radius: 3px;
+            font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
+        }
+
+        pre {
+            background-color: #f8f8f8;
+            padding: 15px;
+            border-radius: 5px;
+            overflow-x: auto;
+            border-left: 4px solid #3498db;
+        }
+
+        table {
+            border-collapse: collapse;
+            width: 100%;
+            margin: 1em 0;
+        }
+
+        th, td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: left;
+        }
+
+        th {
+            background-color: #f2f2f2;
+            font-weight: bold;
+        }
+
+        tr:nth-child(even) { background-color: #f9f9f9; }
+
+        .math, .arithmatex {
+            overflow-x: auto;
+            overflow-y: hidden;
+        }
+
+        .mjx-chtml { outline: none; }
+
+        footer {
+            margin-top: 3em;
+            padding-top: 1em;
+            border-top: 1px solid #eee;
+            color: #7f8c8d;
+            font-size: 0.9em;
+        }
+        .notice-box {
+            background: #fff3cd;
+            border-left: 4px solid #ffc107;
+            border-radius: 4px;
+            padding: 1rem;
+            margin: 1rem 0 2rem 0;
+            color: #856404;
+        }
+        .notice-box strong {
+            color: #856404;
+        }
+    </style>
+</head>
+<body>
+    <h1>Bayesian Gaussian Process Model for Weight Analysis</h1>
+    <div class="notice-box">
+        <strong>🚧 Playground Work-in-Progress Notice:</strong> This technical documentation describes models that are part of an <strong>experimental playground</strong> for Bayesian analysis of personal health data. The implementations and analyses are actively evolving and should be considered exploratory research.
+    </div>
+<h2>Overview</h2>
+<p>This document explains the Bayesian Gaussian Process (GP) model used for analyzing weight trends from Garmin health data. The model is implemented in Stan and provides a flexible framework for capturing temporal patterns while quantifying uncertainty.</p>
+<h2>1. Data Preparation</h2>
+<h3>1.1 Raw Data Loading</h3>
+<p>Weight measurements are loaded from Garmin's <code>userBioMetrics.json</code> export. Each entry contains:</p>
+<ul>
+<li><strong>Date</strong>: Measurement timestamp</li>
+<li><strong>Weight</strong>: Measurement in grams (converted to pounds)</li>
+</ul>
+<div class="highlight"><pre><span></span><code><span class="c1"># Conversion: grams to pounds</span>
+<span class="n">GRAMS_TO_LBS</span> <span class="o">=</span> <span class="mf">0.00220462</span>
+<span class="n">weight_lbs</span> <span class="o">=</span> <span class="n">weight_grams</span> <span class="o">*</span> <span class="n">GRAMS_TO_LBS</span>
+</code></pre></div>
+<h3>1.2 Time Standardization</h3>
+<p>Time is measured in days since the first observation and scaled to <span class="arithmatex">\([0, 1]\)</span>:</p>
+<div class="arithmatex">\[
+t_{\text{days}} = \text{days since first measurement}
+\]</div>
+<div class="arithmatex">\[
+t_{\text{scaled}} = \frac{t_{\text{days}}}{\max(t_{\text{days}})}
+\]</div>
+<p>This scaling improves numerical stability and helps the GP length scale parameter (<span class="arithmatex">\(\rho\)</span>) interpret more consistently.</p>
+<h3>1.3 Weight Standardization</h3>
+<p>Weight values are centered and scaled to have zero mean and unit variance:</p>
+<div class="arithmatex">\[
+y_{\text{original}} = \text{weight in pounds}
+\]</div>
+<div class="arithmatex">\[
+y_{\text{mean}} = \mathbb{E}[y_{\text{original}}]
+\]</div>
+<div class="arithmatex">\[
+y_{\text{sd}} = \text{SD}[y_{\text{original}}]
+\]</div>
+<div class="arithmatex">\[
+y_{\text{standardized}} = \frac{y_{\text{original}} - y_{\text{mean}}}{y_{\text{sd}}}
+\]</div>
+<p><strong>Note</strong>: Scaling parameters are saved for back-transformation after model fitting.</p>
+<h2>2. Gaussian Process Model</h2>
+<h3>2.1 Model Definition</h3>
+<p>The core model assumes weight measurements follow:</p>
+<div class="arithmatex">\[
+y_i = f(t_i) + \epsilon_i, \quad \epsilon_i \sim \mathcal{N}(0, \sigma^2)
+\]</div>
+<p>where <span class="arithmatex">\(f(t)\)</span> is a Gaussian Process:</p>
+<div class="arithmatex">\[
+f(t) \sim \mathcal{GP}(0, k(t, t'))
+\]</div>
+<h3>2.2 Squared Exponential Kernel</h3>
+<p>The covariance between function values at times <span class="arithmatex">\(t_i\)</span> and <span class="arithmatex">\(t_j\)</span> is:</p>
+<div class="arithmatex">\[
+k(t_i, t_j) = \alpha^2 \exp\left(-\frac{(t_i - t_j)^2}{2\rho^2}\right)
+\]</div>
+<p><strong>Parameters</strong>:
+- <span class="arithmatex">\(\alpha\)</span>: Marginal standard deviation (amplitude)
+- <span class="arithmatex">\(\rho\)</span>: Length scale (how quickly correlations decay with time)
+- <span class="arithmatex">\(\sigma\)</span>: Observation noise standard deviation</p>
+<h3>2.3 Numerical Stability</h3>
+<p>A small "jitter" term is added to the diagonal for numerical stability:</p>
+<div class="arithmatex">\[
+K_{ii} = \alpha^2 \left(1 + 10^{-4}\right) + 10^{-6}
+\]</div>
+<p>This prevents the covariance matrix from becoming numerically singular.</p>
+<h2>3. Stan Implementation</h2>
+<h3>3.1 Data Block</h3>
+<div class="highlight"><pre><span></span><code><span class="kn">data</span> <span class="p">{</span>
+  <span class="kt">int</span><span class="o">&lt;</span><span class="k">lower</span><span class="p">=</span><span class="mf">1</span><span class="o">&gt;</span> <span class="n">N</span><span class="p">;</span>          <span class="c1">// Number of observations</span>
+  <span class="kt">array</span><span class="p">[</span><span class="n">N</span><span class="p">]</span> <span class="kt">real</span> <span class="n">t</span><span class="p">;</span>         <span class="c1">// Time points (scaled to [0,1])</span>
+  <span class="kt">vector</span><span class="p">[</span><span class="n">N</span><span class="p">]</span> <span class="n">y</span><span class="p">;</span>             <span class="c1">// Weight observations (standardized)</span>
+
+  <span class="c1">// For flexible model only:</span>
+  <span class="kt">real</span><span class="o">&lt;</span><span class="k">lower</span><span class="p">=</span><span class="mf">0</span><span class="o">&gt;</span> <span class="n">alpha_prior_sd</span><span class="p">;</span>
+  <span class="kt">real</span><span class="o">&lt;</span><span class="k">lower</span><span class="p">=</span><span class="mf">0</span><span class="o">&gt;</span> <span class="n">rho_prior_shape</span><span class="p">;</span>
+  <span class="kt">real</span><span class="o">&lt;</span><span class="k">lower</span><span class="p">=</span><span class="mf">0</span><span class="o">&gt;</span> <span class="n">rho_prior_scale</span><span class="p">;</span>
+  <span class="kt">real</span><span class="o">&lt;</span><span class="k">lower</span><span class="p">=</span><span class="mf">0</span><span class="o">&gt;</span> <span class="n">sigma_prior_sd</span><span class="p">;</span>
+<span class="p">}</span>
+</code></pre></div>
+<h3>3.2 Non-Centered Parameterization</h3>
+<p>Instead of sampling <span class="arithmatex">\(f\)</span> directly, we use a non-centered parameterization:</p>
+<div class="highlight"><pre><span></span><code><span class="kn">parameters</span> <span class="p">{</span>
+  <span class="kt">real</span><span class="o">&lt;</span><span class="k">lower</span><span class="p">=</span><span class="mf">0.01</span><span class="o">&gt;</span> <span class="n">alpha</span><span class="p">;</span>  <span class="c1">// GP amplitude</span>
+  <span class="kt">real</span><span class="o">&lt;</span><span class="k">lower</span><span class="p">=</span><span class="mf">0.01</span><span class="o">&gt;</span> <span class="n">rho</span><span class="p">;</span>    <span class="c1">// Length scale</span>
+  <span class="kt">real</span><span class="o">&lt;</span><span class="k">lower</span><span class="p">=</span><span class="mf">0.01</span><span class="o">&gt;</span> <span class="n">sigma</span><span class="p">;</span>  <span class="c1">// Observation noise</span>
+  <span class="kt">vector</span><span class="p">[</span><span class="n">N</span><span class="p">]</span> <span class="n">eta</span><span class="p">;</span>           <span class="c1">// Standardized values ~ N(0,1)</span>
+<span class="p">}</span>
+
+<span class="kn">transformed parameters</span> <span class="p">{</span>
+  <span class="kt">vector</span><span class="p">[</span><span class="n">N</span><span class="p">]</span> <span class="n">f</span><span class="p">;</span>             <span class="c1">// GP function values</span>
+
+  <span class="p">{</span>
+    <span class="kt">matrix</span><span class="p">[</span><span class="n">N</span><span class="p">,</span> <span class="n">N</span><span class="p">]</span> <span class="n">K</span><span class="p">;</span>
+    <span class="kt">matrix</span><span class="p">[</span><span class="n">N</span><span class="p">,</span> <span class="n">N</span><span class="p">]</span> <span class="n">L_K</span><span class="p">;</span>
+
+    <span class="c1">// Build covariance matrix</span>
+    <span class="k">for</span> <span class="p">(</span><span class="n">i</span> <span class="k">in</span> <span class="mf">1</span><span class="o">:</span><span class="n">N</span><span class="p">)</span> <span class="p">{</span>
+      <span class="k">for</span> <span class="p">(</span><span class="n">j</span> <span class="k">in</span> <span class="mf">1</span><span class="o">:</span><span class="n">N</span><span class="p">)</span> <span class="p">{</span>
+        <span class="n">K</span><span class="p">[</span><span class="n">i</span><span class="p">,</span> <span class="n">j</span><span class="p">]</span> <span class="o">=</span> <span class="nb">square</span><span class="p">(</span><span class="n">alpha</span><span class="p">)</span> <span class="o">*</span> <span class="nb">exp</span><span class="p">(</span><span class="o">-</span><span class="nb">square</span><span class="p">(</span><span class="n">t</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">-</span> <span class="n">t</span><span class="p">[</span><span class="n">j</span><span class="p">])</span> <span class="o">/</span> <span class="p">(</span><span class="mf">2</span> <span class="o">*</span> <span class="nb">square</span><span class="p">(</span><span class="n">rho</span><span class="p">)));</span>
+      <span class="p">}</span>
+      <span class="n">K</span><span class="p">[</span><span class="n">i</span><span class="p">,</span> <span class="n">i</span><span class="p">]</span> <span class="o">+=</span> <span class="nb">square</span><span class="p">(</span><span class="n">alpha</span><span class="p">)</span> <span class="o">*</span> <span class="mf">1e-4</span> <span class="o">+</span> <span class="mf">1e-6</span><span class="p">;</span>  <span class="c1">// Jitter</span>
+    <span class="p">}</span>
+
+    <span class="n">L_K</span> <span class="o">=</span> <span class="nb">cholesky_decompose</span><span class="p">(</span><span class="n">K</span><span class="p">);</span>
+    <span class="n">f</span> <span class="o">=</span> <span class="n">L_K</span> <span class="o">*</span> <span class="n">eta</span><span class="p">;</span>  <span class="c1">// Transform: f = L * η ~ N(0, K)</span>
+  <span class="p">}</span>
+<span class="p">}</span>
+</code></pre></div>
+<p><strong>Why non-centered?</strong> This parameterization improves sampling efficiency by reducing posterior correlations between parameters.</p>
+<h3>3.3 Priors</h3>
+<h4>Default Priors (Basic Model):</h4>
+<div class="highlight"><pre><span></span><code><span class="n">alpha</span> <span class="o">~</span><span class="w"> </span><span class="nb">normal</span><span class="p">(</span><span class="mf">0</span><span class="p">,</span> <span class="mf">1</span><span class="p">);</span>          <span class="c1">// Reasonable amplitude</span>
+<span class="n">rho</span> <span class="o">~</span><span class="w"> </span><span class="nb">inv_gamma</span><span class="p">(</span><span class="mf">5</span><span class="p">,</span> <span class="mf">1</span><span class="p">);</span>         <span class="c1">// Encourages smooth trends</span>
+<span class="n">sigma</span> <span class="o">~</span><span class="w"> </span><span class="nb">normal</span><span class="p">(</span><span class="mf">0</span><span class="p">,</span> <span class="mf">0.5</span><span class="p">);</span>        <span class="c1">// Moderate noise</span>
+<span class="n">eta</span> <span class="o">~</span><span class="w"> </span><span class="nb">std_normal</span><span class="p">();</span>            <span class="c1">// Non-centered transform</span>
+</code></pre></div>
+<h4>Flexible Priors:</h4>
+<div class="highlight"><pre><span></span><code><span class="n">alpha</span> <span class="o">~</span><span class="w"> </span><span class="nb">normal</span><span class="p">(</span><span class="mf">0</span><span class="p">,</span> <span class="n">alpha_prior_sd</span><span class="p">);</span>
+<span class="n">rho</span> <span class="o">~</span><span class="w"> </span><span class="nb">inv_gamma</span><span class="p">(</span><span class="n">rho_prior_shape</span><span class="p">,</span> <span class="n">rho_prior_scale</span><span class="p">);</span>
+<span class="n">sigma</span> <span class="o">~</span><span class="w"> </span><span class="nb">normal</span><span class="p">(</span><span class="mf">0</span><span class="p">,</span> <span class="n">sigma_prior_sd</span><span class="p">);</span>
+<span class="n">eta</span> <span class="o">~</span><span class="w"> </span><span class="nb">std_normal</span><span class="p">();</span>
+</code></pre></div>
+<p><strong>Inverse Gamma Distribution</strong>: <span class="arithmatex">\(p(\rho) \propto \rho^{-(\text{shape}+1)} \exp(-\text{scale}/\rho)\)</span></p>
+<h3>3.4 Likelihood</h3>
+<div class="highlight"><pre><span></span><code><span class="kn">model</span> <span class="p">{</span>
+  <span class="n">y</span> <span class="o">~</span><span class="w"> </span><span class="nb">normal</span><span class="p">(</span><span class="n">f</span><span class="p">,</span> <span class="n">sigma</span><span class="p">);</span>
+<span class="p">}</span>
+</code></pre></div>
+<p>Each observation <span class="arithmatex">\(y_i\)</span> is normally distributed around the GP function value <span class="arithmatex">\(f(t_i)\)</span> with noise <span class="arithmatex">\(\sigma\)</span>.</p>
+<h3>3.5 Generated Quantities</h3>
+<div class="highlight"><pre><span></span><code><span class="kn">generated quantities</span> <span class="p">{</span>
+  <span class="kt">vector</span><span class="p">[</span><span class="n">N</span><span class="p">]</span> <span class="n">y_rep</span><span class="p">;</span>            <span class="c1">// Posterior predictive samples</span>
+  <span class="kt">real</span><span class="o">&lt;</span><span class="k">lower</span><span class="p">=</span><span class="mf">0</span><span class="o">&gt;</span> <span class="n">trend_change</span><span class="p">;</span> <span class="c1">// Total change from first to last point</span>
+
+  <span class="k">for</span> <span class="p">(</span><span class="n">n</span> <span class="k">in</span> <span class="mf">1</span><span class="o">:</span><span class="n">N</span><span class="p">)</span> <span class="p">{</span>
+    <span class="n">y_rep</span><span class="p">[</span><span class="n">n</span><span class="p">]</span> <span class="o">=</span> <span class="nb">normal_rng</span><span class="p">(</span><span class="n">f</span><span class="p">[</span><span class="n">n</span><span class="p">],</span> <span class="n">sigma</span><span class="p">);</span>
+  <span class="p">}</span>
+
+  <span class="n">trend_change</span> <span class="o">=</span> <span class="nb">abs</span><span class="p">(</span><span class="n">f</span><span class="p">[</span><span class="n">N</span><span class="p">]</span> <span class="o">-</span> <span class="n">f</span><span class="p">[</span><span class="mf">1</span><span class="p">]);</span>
+<span class="p">}</span>
+</code></pre></div>
+<p><strong>Posterior Predictive Checks</strong>: Simulate new data <span class="arithmatex">\(y^{\text{rep}}\)</span> to check model fit.</p>
+<p><strong>Trend Change</strong>: Absolute difference between first and last GP function values.</p>
+<h2>4. Mathematical Details</h2>
+<h3>4.1 Gaussian Process Definition</h3>
+<p>A Gaussian Process is a collection of random variables, any finite number of which have a joint Gaussian distribution:</p>
+<div class="arithmatex">\[
+f(\mathbf{t}) \sim \mathcal{N}(\mathbf{0}, \mathbf{K})
+\]</div>
+<p>where <span class="arithmatex">\(\mathbf{K}\)</span> is the <span class="arithmatex">\(N \times N\)</span> covariance matrix with entries <span class="arithmatex">\(K_{ij} = k(t_i, t_j)\)</span>.</p>
+<h3>4.2 Posterior Distribution</h3>
+<p>Given observed data <span class="arithmatex">\(\mathbf{y}\)</span>, the posterior for <span class="arithmatex">\(f\)</span> is:</p>
+<div class="arithmatex">\[
+p(f | \mathbf{y}, \mathbf{t}) \propto p(\mathbf{y} | f, \sigma^2) \cdot p(f | \alpha, \rho)
+\]</div>
+<h3>4.3 Kernel Properties</h3>
+<p><strong>Squared Exponential (RBF) Kernel</strong>:
+- Infinitely differentiable (produces smooth functions)
+- Stationary (depends only on time difference <span class="arithmatex">\(|t_i - t_j|\)</span>)
+- Positive definite (ensures valid covariance matrix)</p>
+<h3>4.4 Length Scale Interpretation</h3>
+<p>The length scale <span class="arithmatex">\(\rho\)</span> controls function smoothness:</p>
+<ul>
+<li><strong>Small <span class="arithmatex">\(\rho\)</span></strong>: Rapid fluctuations, captures short-term variations</li>
+<li><strong>Large <span class="arithmatex">\(\rho\)</span></strong>: Slow trends, smooth long-term patterns</li>
+</ul>
+<p><strong>Rule of thumb</strong>: Correlation drops to <span class="arithmatex">\(\exp(-1) \approx 0.37\)</span> at distance <span class="arithmatex">\(\rho\)</span>.</p>
+<h2>5. Model Fitting and Inference</h2>
+<h3>5.1 MCMC Sampling</h3>
+<p>The model is fitted using Hamiltonian Monte Carlo (HMC) via Stan:</p>
+<div class="highlight"><pre><span></span><code><span class="n">fit</span> <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">sample</span><span class="p">(</span>
+    <span class="n">data</span><span class="o">=</span><span class="n">stan_data</span><span class="p">,</span>
+    <span class="n">chains</span><span class="o">=</span><span class="mi">4</span><span class="p">,</span>
+    <span class="n">iter_warmup</span><span class="o">=</span><span class="mi">500</span><span class="p">,</span>
+    <span class="n">iter_sampling</span><span class="o">=</span><span class="mi">500</span><span class="p">,</span>
+    <span class="n">show_progress</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+<span class="p">)</span>
+</code></pre></div>
+<h3>5.2 Diagnostics</h3>
+<p>Key diagnostics checked:</p>
+<ol>
+<li><strong>R-hat</strong>: <span class="arithmatex">\(\hat{R} &lt; 1.01\)</span> indicates convergence</li>
+<li><strong>ESS</strong>: Effective Sample Size &gt; 400 per chain</li>
+<li><strong>Divergent transitions</strong>: Should be minimal (&lt; 1%)</li>
+</ol>
+<h3>5.3 Posterior Analysis</h3>
+<p>After sampling, we compute:</p>
+<div class="highlight"><pre><span></span><code><span class="c1"># Extract posterior samples</span>
+<span class="n">f_samples</span> <span class="o">=</span> <span class="n">idata</span><span class="o">.</span><span class="n">posterior</span><span class="p">[</span><span class="s2">&quot;f&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">values</span>  <span class="c1"># Shape: (chain, draw, obs)</span>
+
+<span class="c1"># Back-transform to original scale</span>
+<span class="n">f_mean</span> <span class="o">=</span> <span class="n">f_samples</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">axis</span><span class="o">=</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">))</span> <span class="o">*</span> <span class="n">y_sd</span> <span class="o">+</span> <span class="n">y_mean</span>
+<span class="n">f_std</span> <span class="o">=</span> <span class="n">f_samples</span><span class="o">.</span><span class="n">std</span><span class="p">(</span><span class="n">axis</span><span class="o">=</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">))</span> <span class="o">*</span> <span class="n">y_sd</span>
+</code></pre></div>
+<h2>6. Practical Considerations</h2>
+<h3>6.1 Prior Sensitivity</h3>
+<p>Different prior configurations affect model flexibility:</p>
+<table>
+<thead>
+<tr>
+<th>Configuration</th>
+<th><span class="arithmatex">\(\alpha\)</span> prior</th>
+<th><span class="arithmatex">\(\rho\)</span> prior</th>
+<th>Effect</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Smooth</strong></td>
+<td>normal(0, 1)</td>
+<td>inv_gamma(5, 1)</td>
+<td>Encourages smooth trends</td>
+</tr>
+<tr>
+<td><strong>Wiggly</strong></td>
+<td>normal(0, 2)</td>
+<td>inv_gamma(2, 0.5)</td>
+<td>Allows more short-term variation</td>
+</tr>
+<tr>
+<td><strong>Very flexible</strong></td>
+<td>normal(0, 3)</td>
+<td>inv_gamma(1.5, 0.3)</td>
+<td>Captures rapid fluctuations</td>
+</tr>
+</tbody>
+</table>
+<h3>6.2 Computational Complexity</h3>
+<p>The GP covariance matrix is <span class="arithmatex">\(O(N^2)\)</span> in memory and <span class="arithmatex">\(O(N^3)\)</span> in computation (Cholesky decomposition). For large datasets (<span class="arithmatex">\(N &gt; 1000\)</span>), consider:</p>
+<ol>
+<li><strong>Sparse approximations</strong> (e.g., FITC, VFE)</li>
+<li><strong>Kernel approximations</strong> (e.g., Random Fourier Features)</li>
+<li><strong>Time series models</strong> (e.g., ARIMA, state space models)</li>
+</ol>
+<h3>6.3 Model Extensions</h3>
+<p>Potential improvements:</p>
+<ol>
+<li><strong>Heteroskedastic noise</strong>: <span class="arithmatex">\(\sigma(t)\)</span> varying with time</li>
+<li><strong>Multiple outputs</strong>: Joint modeling of weight, sleep, activity</li>
+<li><strong>Changepoints</strong>: Allowing trend changes at specific times</li>
+<li><strong>Seasonality</strong>: Adding periodic components</li>
+</ol>
+<h2>7. Example Results</h2>
+<h3>7.1 Typical Output</h3>
+<p>For a 1.5-year weight dataset:
+- <strong>Trend change</strong>: ~6.5 lbs (increase or decrease)
+- <strong>Average uncertainty</strong>: ~0.23 lbs (standard deviation)
+- <strong>R-hat</strong>: 1.00-1.01 (good convergence)</p>
+<h3>7.2 Visualization</h3>
+<p>The model produces:
+1. <strong>Expected trajectory</strong>: Posterior mean of <span class="arithmatex">\(f(t)\)</span>
+2. <strong>Credible intervals</strong>: Uncertainty bands (e.g., 80%, 95% CI)
+3. <strong>Posterior predictive</strong>: Simulated data vs. observed</p>
+<h2>8. Caching System</h2>
+<h3>8.1 Cache Key Generation</h3>
+<p>Models are cached based on a SHA256 hash of:
+- Data file modification time
+- Stan file modification time
+- Model hyperparameters
+- MCMC configuration (chains, iterations)</p>
+<h3>8.2 Cache Contents</h3>
+<div class="highlight"><pre><span></span><code>output/cache/<span class="o">{</span>hash<span class="o">}</span>/
+├──<span class="w"> </span>metadata.json<span class="w">      </span><span class="c1"># Configuration and metadata</span>
+├──<span class="w"> </span>idata.nc<span class="w">          </span><span class="c1"># ArviZ InferenceData (NetCDF)</span>
+├──<span class="w"> </span>df.parquet<span class="w">        </span><span class="c1"># Original DataFrame</span>
+├──<span class="w"> </span>stan_data.json<span class="w">    </span><span class="c1"># Stan data dictionary</span>
+└──<span class="w"> </span>csv/<span class="w">              </span><span class="c1"># MCMC CSV output files</span>
+</code></pre></div>
+<h3>8.3 Cache Invalidation</h3>
+<p>Cache is invalidated when:
+1. <strong>Data changes</strong>: File modification time updates
+2. <strong>Model changes</strong>: Stan file is modified
+3. <strong>Configuration changes</strong>: Different hyperparameters or MCMC settings</p>
+<h2>9. Command Line Interface</h2>
+<p>The Gaussian Process weight analysis provides several command-line interfaces for fitting models and generating visualizations.</p>
+<h3>9.1 NPM Scripts (Recommended)</h3>
+<p>The project includes convenient npm scripts for common analysis tasks:</p>
+<table>
+<thead>
+<tr>
+<th>Command</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>npm run plot-weight</code></td>
+<td>Basic plot with 80% credible interval</td>
+</tr>
+<tr>
+<td><code>npm run plot-weight:stddev</code></td>
+<td>Plot with uncertainty (standard deviation) subplot</td>
+</tr>
+<tr>
+<td><code>npm run plot-weight:multi</code></td>
+<td>Plot with multiple credible intervals (50%, 80%, 95%)</td>
+</tr>
+<tr>
+<td><code>npm run plot-weight:flexible</code></td>
+<td>Use flexible model with custom priors</td>
+</tr>
+<tr>
+<td><code>npm run plot-weight:wiggly</code></td>
+<td>Use wiggly priors for more flexible fits</td>
+</tr>
+</tbody>
+</table>
+<p>These scripts use <code>uv</code> (Python package manager) internally and handle all dependencies automatically.</p>
+<h3>9.2 Python CLI Direct Usage</h3>
+<p>For more control, you can use the Python CLI directly:</p>
+<div class="highlight"><pre><span></span><code><span class="c1"># Basic usage</span>
+uv<span class="w"> </span>run<span class="w"> </span>python<span class="w"> </span>-m<span class="w"> </span>src.models.plot_weight_cli
+
+<span class="c1"># Show multiple credible intervals</span>
+uv<span class="w"> </span>run<span class="w"> </span>python<span class="w"> </span>-m<span class="w"> </span>src.models.plot_weight_cli<span class="w"> </span>--multiple-intervals<span class="w"> </span>--ci-levels<span class="w"> </span><span class="m">50</span><span class="w"> </span><span class="m">80</span><span class="w"> </span><span class="m">95</span>
+
+<span class="c1"># Show uncertainty evolution</span>
+uv<span class="w"> </span>run<span class="w"> </span>python<span class="w"> </span>-m<span class="w"> </span>src.models.plot_weight_cli<span class="w"> </span>--show-stddev
+
+<span class="c1"># Use flexible model with custom priors</span>
+uv<span class="w"> </span>run<span class="w"> </span>python<span class="w"> </span>-m<span class="w"> </span>src.models.plot_weight_cli<span class="w"> </span>--use-flexible<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--alpha-prior-sd<span class="w"> </span><span class="m">2</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--rho-prior-shape<span class="w"> </span><span class="m">2</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--rho-prior-scale<span class="w"> </span><span class="m">0</span>.5<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--sigma-prior-sd<span class="w"> </span><span class="m">1</span>
+
+<span class="c1"># Change MCMC settings</span>
+uv<span class="w"> </span>run<span class="w"> </span>python<span class="w"> </span>-m<span class="w"> </span>src.models.plot_weight_cli<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--chains<span class="w"> </span><span class="m">4</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--iter-warmup<span class="w"> </span><span class="m">500</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--iter-sampling<span class="w"> </span><span class="m">1000</span>
+</code></pre></div>
+<h3>9.3 Command Line Options</h3>
+<p>Key command-line options:</p>
+<table>
+<thead>
+<tr>
+<th>Option</th>
+<th>Description</th>
+<th>Default</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>--output</code>, <code>-o</code></td>
+<td>Output file path</td>
+<td><code>output/weight_fit_enhanced.png</code></td>
+</tr>
+<tr>
+<td><code>--ci-levels</code></td>
+<td>Credible interval levels</td>
+<td><code>80</code></td>
+</tr>
+<tr>
+<td><code>--multiple-intervals</code></td>
+<td>Show multiple intervals simultaneously</td>
+<td><code>false</code></td>
+</tr>
+<tr>
+<td><code>--show-stddev</code></td>
+<td>Show standard deviation subplot</td>
+<td><code>false</code></td>
+</tr>
+<tr>
+<td><code>--use-flexible</code></td>
+<td>Use flexible Stan model</td>
+<td><code>false</code></td>
+</tr>
+<tr>
+<td><code>--alpha-prior-sd</code></td>
+<td>Standard deviation for α prior</td>
+<td><code>1.0</code></td>
+</tr>
+<tr>
+<td><code>--rho-prior-shape</code></td>
+<td>Shape parameter for ρ prior (inverse gamma)</td>
+<td><code>5.0</code></td>
+</tr>
+<tr>
+<td><code>--rho-prior-scale</code></td>
+<td>Scale parameter for ρ prior</td>
+<td><code>1.0</code></td>
+</tr>
+<tr>
+<td><code>--sigma-prior-sd</code></td>
+<td>Standard deviation for σ prior</td>
+<td><code>0.5</code></td>
+</tr>
+<tr>
+<td><code>--chains</code></td>
+<td>Number of MCMC chains</td>
+<td><code>4</code></td>
+</tr>
+<tr>
+<td><code>--iter-warmup</code></td>
+<td>Warmup iterations per chain</td>
+<td><code>500</code></td>
+</tr>
+<tr>
+<td><code>--iter-sampling</code></td>
+<td>Sampling iterations per chain</td>
+<td><code>500</code></td>
+</tr>
+<tr>
+<td><code>--data-dir</code></td>
+<td>Path to data directory</td>
+<td><code>data</code></td>
+</tr>
+<tr>
+<td><code>--stan-file</code></td>
+<td>Path to Stan model file</td>
+<td><code>stan/weight_gp.stan</code></td>
+</tr>
+</tbody>
+</table>
+<h3>9.4 Model Fitting Examples</h3>
+<p><strong>Basic analysis</strong>:
+<div class="highlight"><pre><span></span><code>npm<span class="w"> </span>run<span class="w"> </span>plot-weight
+</code></pre></div></p>
+<p><strong>Enhanced uncertainty visualization</strong>:
+<div class="highlight"><pre><span></span><code>npm<span class="w"> </span>run<span class="w"> </span>plot-weight:stddev
+</code></pre></div></p>
+<p><strong>Multiple credible intervals with custom priors</strong>:
+<div class="highlight"><pre><span></span><code>npm<span class="w"> </span>run<span class="w"> </span>plot-weight:wiggly
+</code></pre></div></p>
+<p><strong>Direct Python usage with all options</strong>:
+<div class="highlight"><pre><span></span><code>uv<span class="w"> </span>run<span class="w"> </span>python<span class="w"> </span>-m<span class="w"> </span>src.models.plot_weight_cli<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--multiple-intervals<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--ci-levels<span class="w"> </span><span class="m">50</span><span class="w"> </span><span class="m">80</span><span class="w"> </span><span class="m">95</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--show-stddev<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--use-flexible<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--alpha-prior-sd<span class="w"> </span><span class="m">2</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--rho-prior-shape<span class="w"> </span><span class="m">2</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--rho-prior-scale<span class="w"> </span><span class="m">0</span>.5<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--output<span class="w"> </span>output/weight_analysis_custom.png
+</code></pre></div></p>
+<h3>9.5 Output and Results</h3>
+<p>The CLI generates:
+1. <strong>Plot visualization</strong>: Saved to specified output path (default: <code>output/weight_fit_enhanced.png</code>)
+2. <strong>Console summary</strong>: Key parameters, trend change, uncertainty statistics
+3. <strong>Cache files</strong>: Model results cached for faster subsequent runs</p>
+<h2>10. References</h2>
+<ol>
+<li>Rasmussen &amp; Williams (2006) <em>Gaussian Processes for Machine Learning</em></li>
+<li>Stan Development Team (2024) <em>Stan User's Guide</em></li>
+<li>Betancourt (2017) <em>A Conceptual Introduction to Hamiltonian Monte Carlo</em></li>
+<li>Gelman et al. (2013) <em>Bayesian Data Analysis</em></li>
+</ol>
+<h2>11. Appendix: Mathematical Notation</h2>
+<table>
+<thead>
+<tr>
+<th>Symbol</th>
+<th>Meaning</th>
+<th>Range</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><span class="arithmatex">\(N\)</span></td>
+<td>Number of observations</td>
+<td><span class="arithmatex">\(\mathbb{Z}^+\)</span></td>
+</tr>
+<tr>
+<td><span class="arithmatex">\(t_i\)</span></td>
+<td>Time point <span class="arithmatex">\(i\)</span> (scaled)</td>
+<td><span class="arithmatex">\([0, 1]\)</span></td>
+</tr>
+<tr>
+<td><span class="arithmatex">\(y_i\)</span></td>
+<td>Weight observation <span class="arithmatex">\(i\)</span> (standardized)</td>
+<td><span class="arithmatex">\(\mathbb{R}\)</span></td>
+</tr>
+<tr>
+<td><span class="arithmatex">\(f(t)\)</span></td>
+<td>GP function value at time <span class="arithmatex">\(t\)</span></td>
+<td><span class="arithmatex">\(\mathbb{R}\)</span></td>
+</tr>
+<tr>
+<td><span class="arithmatex">\(\alpha\)</span></td>
+<td>GP amplitude (marginal SD)</td>
+<td><span class="arithmatex">\(\mathbb{R}^+\)</span></td>
+</tr>
+<tr>
+<td><span class="arithmatex">\(\rho\)</span></td>
+<td>GP length scale</td>
+<td><span class="arithmatex">\(\mathbb{R}^+\)</span></td>
+</tr>
+<tr>
+<td><span class="arithmatex">\(\sigma\)</span></td>
+<td>Observation noise SD</td>
+<td><span class="arithmatex">\(\mathbb{R}^+\)</span></td>
+</tr>
+<tr>
+<td><span class="arithmatex">\(\eta\)</span></td>
+<td>Non-centered parameter</td>
+<td><span class="arithmatex">\(\mathcal{N}(0, 1)\)</span></td>
+</tr>
+<tr>
+<td><span class="arithmatex">\(K\)</span></td>
+<td>Covariance matrix</td>
+<td><span class="arithmatex">\(\mathbb{R}^{N \times N}\)</span></td>
+</tr>
+</tbody>
+</table>
+<hr>
+<p><em>Last updated: 2026-01-23</em>
+<em>Model version: Gaussian Process weight analysis v2.0</em></p>
+
+    <footer>
+        <p>Generated from: weight_gp_model_explanation.md</p>
+        <p>Last updated: 2026-01-23 12:05:51</p>
+        <p>Using MathJax v3 for mathematical notation rendering.</p>
+    </footer>
+</body>
+</html>

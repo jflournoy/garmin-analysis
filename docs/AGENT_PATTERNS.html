@@ -1,0 +1,354 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Bayesian Gaussian Process Model for Weight Analysis</title>
+
+    <!-- MathJax Configuration -->
+    <script>
+    MathJax = {
+        tex: {
+            inlineMath: [['$', '$'], ['\\(', '\\)']],
+            displayMath: [['$$', '$$'], ['\\[', '\\]']],
+            processEscapes: true,
+            processEnvironments: true
+        },
+        options: {
+            skipHtmlTags: ['script', 'noscript', 'style', 'textarea', 'pre']
+        }
+    };
+    </script>
+
+    <!-- Load MathJax -->
+    <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" async></script>
+
+    <!-- Basic styling -->
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        h1, h2, h3, h4 {
+            color: #2c3e50;
+            margin-top: 1.5em;
+            border-bottom: 1px solid #eee;
+            padding-bottom: 0.3em;
+        }
+
+        h1 { border-bottom: 2px solid #3498db; }
+
+        code {
+            background-color: #f8f8f8;
+            padding: 2px 4px;
+            border-radius: 3px;
+            font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
+        }
+
+        pre {
+            background-color: #f8f8f8;
+            padding: 15px;
+            border-radius: 5px;
+            overflow-x: auto;
+            border-left: 4px solid #3498db;
+        }
+
+        table {
+            border-collapse: collapse;
+            width: 100%;
+            margin: 1em 0;
+        }
+
+        th, td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: left;
+        }
+
+        th {
+            background-color: #f2f2f2;
+            font-weight: bold;
+        }
+
+        tr:nth-child(even) { background-color: #f9f9f9; }
+
+        .math, .arithmatex {
+            overflow-x: auto;
+            overflow-y: hidden;
+        }
+
+        .mjx-chtml { outline: none; }
+
+        footer {
+            margin-top: 3em;
+            padding-top: 1em;
+            border-top: 1px solid #eee;
+            color: #7f8c8d;
+            font-size: 0.9em;
+        }
+    </style>
+</head>
+<body>
+    <h1>Claude Code Agent Patterns and Best Practices</h1>
+<h2>Overview</h2>
+<p>This guide documents patterns for creating and using Claude Code agents effectively, based on the implementations in this repository.</p>
+<h2>Core Agent Patterns</h2>
+<h3>1. The Analysis Agent Pattern</h3>
+<p><strong>Purpose</strong>: Process large datasets to extract insights and patterns</p>
+<p><strong>Structure</strong>:
+<div class="highlight"><pre><span></span><code>---
+agent-type: general-purpose
+allowed-tools: [Read, Glob, Grep, Bash, Write]
+<span class="gu">description: [Specific analysis purpose]</span>
+<span class="gu">---</span>
+
+<span class="gh"># Agent Name</span>
+
+<span class="gu">## Objective</span>
+Clear statement of what analysis will be performed
+
+<span class="gu">## Task Instructions</span>
+<span class="gu">### Phase 1: Data Discovery</span>
+<span class="gu">### Phase 2: Analysis</span>
+<span class="gu">### Phase 3: Pattern Recognition</span>
+<span class="gu">### Phase 4: Report Generation</span>
+
+<span class="gu">## Output Format</span>
+Specific format for results
+
+<span class="gu">## Success Criteria</span>
+Measurable outcomes
+</code></pre></div></p>
+<p><strong>Examples</strong>: <code>session-insights</code>, <code>command-analyzer</code></p>
+<p><strong>When to use</strong>: When you need to understand patterns across multiple files or time periods</p>
+<h3>2. The Optimization Agent Pattern</h3>
+<p><strong>Purpose</strong>: Identify improvement opportunities and provide actionable recommendations</p>
+<p><strong>Key characteristics</strong>:
+- Analyzes current state vs optimal state
+- Provides specific, measurable improvements
+- Includes implementation roadmap
+- Quantifies benefits (token savings, time improvements)</p>
+<p><strong>Example</strong>: <code>command-optimizer</code></p>
+<p><strong>When to use</strong>: When you want to improve efficiency of existing systems</p>
+<h3>3. The Audit Agent Pattern</h3>
+<p><strong>Purpose</strong>: Systematically check quality and completeness</p>
+<p><strong>Key characteristics</strong>:
+- Comprehensive checking across multiple dimensions
+- Categorized findings by severity
+- Clear success/failure criteria
+- Actionable remediation steps</p>
+<p><strong>Example</strong>: <code>documentation-auditor</code></p>
+<p><strong>When to use</strong>: When you need to ensure standards compliance</p>
+<h3>4. The Composer Agent Pattern</h3>
+<p><strong>Purpose</strong>: Create new artifacts based on analysis and requirements</p>
+<p><strong>Key characteristics</strong>:
+- Takes high-level goals and creates detailed implementations
+- Combines multiple existing patterns
+- Provides usage examples and documentation
+- Considers integration with existing systems</p>
+<p><strong>When to use</strong>: When you need to create custom solutions for complex problems</p>
+<h2>Design Principles</h2>
+<h3>1. Clear Objective Definition</h3>
+<p>Every agent must have a specific, measurable objective:</p>
+<div class="highlight"><pre><span></span><code><span class="gu">## Objective</span>
+Perform comprehensive analysis of X to identify Y and provide Z recommendations
+</code></pre></div>
+<p><strong>Good</strong>: "Analyze command usage patterns to identify optimization opportunities"
+<strong>Bad</strong>: "Make commands better"</p>
+<h3>2. Phased Execution</h3>
+<p>Break complex tasks into logical phases:</p>
+<ol>
+<li><strong>Discovery Phase</strong>: Find and catalog relevant data</li>
+<li><strong>Analysis Phase</strong>: Process data to extract insights  </li>
+<li><strong>Synthesis Phase</strong>: Combine insights into recommendations</li>
+<li><strong>Reporting Phase</strong>: Generate actionable outputs</li>
+</ol>
+<h3>3. Structured Output</h3>
+<p>Define specific output formats that provide value:</p>
+<div class="highlight"><pre><span></span><code><span class="gu">## Output Format</span>
+Create <span class="sb">`.claude/agents/reports/[agent-name]-[date].md`</span> with:
+<span class="k">-</span><span class="w"> </span>Executive summary
+<span class="k">-</span><span class="w"> </span>Detailed findings
+<span class="k">-</span><span class="w"> </span>Prioritized recommendations
+<span class="k">-</span><span class="w"> </span>Success metrics
+</code></pre></div>
+<h3>4. Error Resilience</h3>
+<p>Agents should handle incomplete or missing data gracefully:</p>
+<div class="highlight"><pre><span></span><code><span class="gu">## Error Handling</span>
+<span class="k">-</span><span class="w"> </span>Skip corrupted files but log them
+<span class="k">-</span><span class="w"> </span>Continue analysis with partial data
+<span class="k">-</span><span class="w"> </span>Note ambiguities for manual review
+</code></pre></div>
+<h2>Implementation Patterns</h2>
+<h3>Frontmatter Standards</h3>
+<div class="highlight"><pre><span></span><code><span class="nn">---</span>
+<span class="nt">agent-type</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">general-purpose | specialized</span>
+<span class="nt">allowed-tools</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">List of required tools</span><span class="p p-Indicator">]</span>
+<span class="nt">description</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">One-line description of agent purpose</span>
+<span class="nn">---</span>
+</code></pre></div>
+<h3>Task Instruction Structure</h3>
+<ol>
+<li><strong>Clear phases</strong> with specific deliverables</li>
+<li><strong>Success criteria</strong> that are measurable</li>
+<li><strong>Error handling</strong> for common failure modes</li>
+<li><strong>Integration points</strong> with existing tools</li>
+</ol>
+<h3>Report Generation</h3>
+<p>All agents should create structured reports in <code>.claude/agents/reports/</code>:</p>
+<div class="highlight"><pre><span></span><code>.claude/agents/reports/
+├── command-analysis-2025-01-20.md
+├── session-insights-2025-01-20.md
+├── documentation-audit-2025-01-20.md
+└── ...
+</code></pre></div>
+<h2>Agent Categories</h2>
+<h3>Meta-Repository Agents</h3>
+<p>Agents that analyze and improve the repository itself:
+- <code>command-analyzer</code> - Optimizes the command library
+- <code>documentation-auditor</code> - Ensures documentation quality
+- <code>command-optimizer</code> - Improves command efficiency</p>
+<h3>Development Insight Agents</h3>
+<p>Agents that provide insights about development practices:
+- <code>session-insights</code> - Analyzes development patterns
+- Future: <code>productivity-analyzer</code>, <code>learning-tracker</code></p>
+<h2>Usage Patterns</h2>
+<h3>One-Time Analysis</h3>
+<div class="highlight"><pre><span></span><code><span class="c1"># Use when you need deep insights infrequently</span>
+<span class="s2">&quot;Use the session-insights agent to analyze my development patterns from Q4&quot;</span>
+</code></pre></div>
+<h3>Periodic Optimization</h3>
+<div class="highlight"><pre><span></span><code><span class="c1"># Use monthly/quarterly for system improvements</span>
+<span class="s2">&quot;Use the command-analyzer agent to identify optimization opportunities&quot;</span>
+</code></pre></div>
+<h3>Quality Assurance</h3>
+<div class="highlight"><pre><span></span><code><span class="c1"># Use before releases or major changes</span>
+<span class="s2">&quot;Use the documentation-auditor agent to ensure all docs are complete&quot;</span>
+</code></pre></div>
+<h2>Performance Considerations</h2>
+<h3>Token Efficiency</h3>
+<ul>
+<li>Agents use 200-800 tokens vs 30-100 for commands</li>
+<li>This is justified for complex analysis that would require many command iterations</li>
+<li>Use agents when the alternative is multiple manual steps</li>
+</ul>
+<h3>Execution Time</h3>
+<ul>
+<li>Agents take minutes vs seconds for commands</li>
+<li>Appropriate for tasks requiring analysis and decision-making</li>
+<li>Not suitable for routine operations</li>
+</ul>
+<h3>Value Proposition</h3>
+<ul>
+<li><strong>High value</strong>: Strategic insights, optimization recommendations</li>
+<li><strong>Medium value</strong>: Quality assurance, pattern recognition  </li>
+<li><strong>Low value</strong>: Simple data retrieval, routine checks</li>
+</ul>
+<h2>Integration with Commands</h2>
+<h3>Complementary Usage</h3>
+<div class="highlight"><pre><span></span><code><span class="c1"># Commands execute plans</span>
+/design<span class="w"> </span><span class="s2">&quot;feature-name&quot;</span>
+/estimate<span class="w"> </span>feature<span class="w"> </span>medium
+/todo<span class="w"> </span>add<span class="w"> </span><span class="s2">&quot;implement core logic&quot;</span>
+/commit<span class="w"> </span>feat<span class="w"> </span><span class="s2">&quot;add feature implementation&quot;</span>
+</code></pre></div>
+<h3>Data Flow</h3>
+<div class="highlight"><pre><span></span><code>Commands generate data → Agents analyze data → Agents provide insights → Commands act on insights
+</code></pre></div>
+<h3>Feedback Loop</h3>
+<ol>
+<li>Use agents to optimize command library</li>
+<li>Improved commands generate better data</li>
+<li>Better data enables more sophisticated agent analysis</li>
+<li>Cycle continues for continuous improvement</li>
+</ol>
+<h2>Best Practices</h2>
+<h3>When to Create New Agents</h3>
+<p><strong>Create an agent when:</strong>
+- Task requires analysis across multiple files/sessions
+- Decision-making depends on discovered patterns
+- Output varies significantly based on input data
+- One-time or infrequent complex analysis is needed</p>
+<p><strong>Don't create an agent for:</strong>
+- Routine, predictable tasks
+- Simple file operations
+- Tasks with standard, unchanging steps</p>
+<h3>Agent Naming Conventions</h3>
+<ul>
+<li>Use descriptive names ending in purpose: <code>session-insights</code>, <code>command-analyzer</code></li>
+<li>Avoid generic names: <code>analyzer</code>, <code>optimizer</code></li>
+<li>Be specific about what is being analyzed: <code>documentation-auditor</code></li>
+</ul>
+<h3>Documentation Requirements</h3>
+<p>Every agent needs:
+1. Clear purpose statement
+2. When/why to use it vs alternatives
+3. Expected input/output examples
+4. Integration instructions
+5. Performance/cost considerations</p>
+<h3>Quality Assurance</h3>
+<ul>
+<li>Test agents with real repository data</li>
+<li>Validate output formats and usefulness</li>
+<li>Ensure error handling works correctly</li>
+<li>Document any limitations or assumptions</li>
+</ul>
+<h2>Anti-Patterns</h2>
+<h3>Avoid These Common Mistakes</h3>
+<ol>
+<li>
+<p><strong>Agent for Simple Tasks</strong>
+   <div class="highlight"><pre><span></span><code><span class="c1"># Bad: Agent to check git status</span>
+<span class="c1"># Good: Command /hygiene includes git status</span>
+</code></pre></div></p>
+</li>
+<li>
+<p><strong>Overly Generic Agents</strong>
+   <div class="highlight"><pre><span></span><code><span class="c1"># Bad: &quot;general-analyzer&quot; that does everything</span>
+<span class="c1"># Good: Specific agents for specific analysis types</span>
+</code></pre></div></p>
+</li>
+<li>
+<p><strong>Agents that Don't Generate Value</strong>
+   <div class="highlight"><pre><span></span><code><span class="c1"># Bad: Agent that just lists files</span>
+<span class="c1"># Good: Agent that analyzes patterns in files</span>
+</code></pre></div></p>
+</li>
+<li>
+<p><strong>Missing Success Criteria</strong>
+   <div class="highlight"><pre><span></span><code><span class="gh"># Bad: &quot;Analyze the codebase&quot;</span>
+<span class="gh"># Good: &quot;Identify 3+ optimization opportunities with quantified benefits&quot;</span>
+</code></pre></div></p>
+</li>
+</ol>
+<h2>Future Patterns</h2>
+<h3>Emerging Patterns</h3>
+<p>As agent usage grows, watch for these emerging patterns:</p>
+<ol>
+<li><strong>Collaborative Agents</strong>: Agents that use outputs from other agents</li>
+<li><strong>Incremental Agents</strong>: Agents that update previous analysis</li>
+<li><strong>Predictive Agents</strong>: Agents that forecast based on patterns</li>
+<li><strong>Learning Agents</strong>: Agents that improve recommendations over time</li>
+</ol>
+<h3>Extension Points</h3>
+<p>The current architecture supports:
+- Custom report formats
+- Integration with external tools
+- Chained agent execution
+- Conditional agent triggering</p>
+<h2>Conclusion</h2>
+<p>Agents provide powerful analysis capabilities that complement the routine efficiency of commands. Use this pattern guide to create agents that deliver real value through intelligent analysis and actionable insights.</p>
+<p>Remember: <strong>Commands for routine execution, agents for intelligent analysis.</strong></p>
+
+    <footer>
+        <p>Generated from: AGENT_PATTERNS.md</p>
+        <p>Last updated: 2026-01-22 15:39:59</p>
+        <p>Using MathJax v3 for mathematical notation rendering.</p>
+    </footer>
+</body>
+</html>

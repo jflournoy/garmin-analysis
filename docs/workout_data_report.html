@@ -1,0 +1,485 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Bayesian Gaussian Process Model for Weight Analysis</title>
+
+    <!-- MathJax Configuration -->
+    <script>
+    MathJax = {
+        tex: {
+            inlineMath: [['$', '$'], ['\\(', '\\)']],
+            displayMath: [['$$', '$$'], ['\\[', '\\]']],
+            processEscapes: true,
+            processEnvironments: true
+        },
+        options: {
+            skipHtmlTags: ['script', 'noscript', 'style', 'textarea', 'pre']
+        }
+    };
+    </script>
+
+    <!-- Load MathJax -->
+    <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" async></script>
+
+    <!-- Basic styling -->
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        h1, h2, h3, h4 {
+            color: #2c3e50;
+            margin-top: 1.5em;
+            border-bottom: 1px solid #eee;
+            padding-bottom: 0.3em;
+        }
+
+        h1 { border-bottom: 2px solid #3498db; }
+
+        code {
+            background-color: #f8f8f8;
+            padding: 2px 4px;
+            border-radius: 3px;
+            font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
+        }
+
+        pre {
+            background-color: #f8f8f8;
+            padding: 15px;
+            border-radius: 5px;
+            overflow-x: auto;
+            border-left: 4px solid #3498db;
+        }
+
+        table {
+            border-collapse: collapse;
+            width: 100%;
+            margin: 1em 0;
+        }
+
+        th, td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: left;
+        }
+
+        th {
+            background-color: #f2f2f2;
+            font-weight: bold;
+        }
+
+        tr:nth-child(even) { background-color: #f9f9f9; }
+
+        .math, .arithmatex {
+            overflow-x: auto;
+            overflow-y: hidden;
+        }
+
+        .mjx-chtml { outline: none; }
+
+        footer {
+            margin-top: 3em;
+            padding-top: 1em;
+            border-top: 1px solid #eee;
+            color: #7f8c8d;
+            font-size: 0.9em;
+        }
+        .notice-box {
+            background: #fff3cd;
+            border-left: 4px solid #ffc107;
+            border-radius: 4px;
+            padding: 1rem;
+            margin: 1rem 0 2rem 0;
+            color: #856404;
+        }
+        .notice-box strong {
+            color: #856404;
+        }
+    </style>
+</head>
+<body>
+    <h1>Workout Data Report</h1>
+    <div class="notice-box">
+        <strong>🚧 Playground Work-in-Progress Notice:</strong> This data documentation describes datasets that are part of an <strong>experimental playground</strong> for Bayesian analysis of personal health data. The data processing and analyses are actively evolving and should be considered exploratory research.
+    </div>
+<h2>Overview</h2>
+<p>This report documents the workout data available from Garmin fitness exports, specifically focusing on strength training data for use in Bayesian time-series modeling. The data is loaded via the <code>src.data.workout</code> module, which processes Garmin's summarized activities JSON files.</p>
+<p><strong>Key Statistics</strong> (based on current dataset):
+- <strong>Total workouts</strong>: 139 strength training sessions
+- <strong>Date range</strong>: 2024-03-06 to 2026-01-12 (678 days)
+- <strong>Workout frequency</strong>: 0.21 workouts/day (approximately 1.5 workouts per week)
+- <strong>Most common workout day</strong>: Wednesday
+- <strong>Volume data quality</strong>: 86.3% of workouts have zero volume recorded
+- <strong>Total reps</strong>: 23,897 | <strong>Total sets</strong>: 2,164
+- <strong>Primary metrics</strong>: Reps, sets, volume, duration, calories</p>
+<h2>Data Fields</h2>
+<h3>Core Workout Metadata</h3>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Type</th>
+<th>Description</th>
+<th>Example</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>activity_id</code></td>
+<td>int64</td>
+<td>Unique Garmin activity identifier</td>
+<td>14288027894</td>
+</tr>
+<tr>
+<td><code>activity_type</code></td>
+<td>string</td>
+<td>Type of activity (e.g., "strength_training")</td>
+<td>"strength_training"</td>
+</tr>
+<tr>
+<td><code>name</code></td>
+<td>string</td>
+<td>Workout name (user-defined)</td>
+<td>"Morning Workout"</td>
+</tr>
+<tr>
+<td><code>start_time_gmt</code></td>
+<td>datetime</td>
+<td>Start time in GMT (millisecond precision)</td>
+<td>2023-01-15 14:30:00</td>
+</tr>
+<tr>
+<td><code>start_time_local</code></td>
+<td>datetime</td>
+<td>Start time in local timezone</td>
+<td>2023-01-15 09:30:00</td>
+</tr>
+<tr>
+<td><code>date</code></td>
+<td>datetime</td>
+<td>Date extracted from local start time (day-level precision)</td>
+<td>2023-01-15</td>
+</tr>
+</tbody>
+</table>
+<h3>Fitness Metrics</h3>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Type</th>
+<th>Description</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>duration</code></td>
+<td>float64</td>
+<td>Workout duration in seconds</td>
+<td>3600 = 1 hour</td>
+</tr>
+<tr>
+<td><code>calories</code></td>
+<td>float64</td>
+<td>Estimated calories burned</td>
+<td><strong>Likely most reliable magnitude metric</strong> - Garmin estimation based on HR, duration, user profile; consistently recorded</td>
+</tr>
+<tr>
+<td><code>avg_hr</code></td>
+<td>float64</td>
+<td>Average heart rate during workout</td>
+<td>Optional, may be null</td>
+</tr>
+<tr>
+<td><code>max_hr</code></td>
+<td>float64</td>
+<td>Maximum heart rate during workout</td>
+<td>Optional, may be null</td>
+</tr>
+<tr>
+<td><code>min_hr</code></td>
+<td>float64</td>
+<td>Minimum heart rate during workout</td>
+<td>Optional, may be null</td>
+</tr>
+<tr>
+<td><code>steps</code></td>
+<td>float64</td>
+<td>Steps recorded during workout</td>
+<td>May be zero for strength training</td>
+</tr>
+</tbody>
+</table>
+<h3>Strength-Specific Metrics</h3>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Type</th>
+<th>Description</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>total_reps</code></td>
+<td>int64</td>
+<td>Total repetitions across all exercises</td>
+<td><strong>Potential counting errors</strong> - may not capture effort intensity</td>
+</tr>
+<tr>
+<td><code>total_sets</code></td>
+<td>int64</td>
+<td>Total sets across all exercises</td>
+<td><strong>Potential counting errors</strong> - may not capture effort intensity</td>
+</tr>
+<tr>
+<td><code>active_sets</code></td>
+<td>int64</td>
+<td>Active sets (sets with recorded reps)</td>
+<td>May equal total_sets</td>
+</tr>
+<tr>
+<td><code>total_volume</code></td>
+<td>int64</td>
+<td>Total weight lifted (volume) in arbitrary units</td>
+<td><strong>Data quality issue</strong>: Many zero values</td>
+</tr>
+</tbody>
+</table>
+<h3>Exercise Details</h3>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Type</th>
+<th>Description</th>
+<th>Structure</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>exercise_details</code></td>
+<td>list[dict]</td>
+<td>Detailed breakdown of individual exercises</td>
+<td>List of exercise records</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Exercise Record Fields</strong>:
+- <code>category</code>: string - Exercise category (e.g., "BENCH_PRESS", "UNKNOWN")
+- <code>sub_category</code>: string or None - More specific classification
+- <code>reps</code>: int - Number of repetitions for this exercise
+- <code>volume</code>: int - Weight lifted for this exercise (may be zero)
+- <code>duration</code>: float - Duration of this exercise in seconds
+- <code>sets</code>: int - Number of sets for this exercise
+- <code>max_weight</code>: int or None - Maximum weight used</p>
+<h2>Data Quality Assessment</h2>
+<h3>Missing Values</h3>
+<ul>
+<li><code>min_hr</code>: 79 out of 139 records missing (56.8%) - expected for strength training without continuous HR monitoring</li>
+<li>Other heart rate metrics (<code>avg_hr</code>, <code>max_hr</code>): Some missing but fewer than <code>min_hr</code></li>
+<li>All other core fields have complete data</li>
+</ul>
+<h3>Volume Data Issues</h3>
+<p>The <code>total_volume</code> field shows significant data quality problems:
+- Many workouts have <code>total_volume = 0</code> despite having <code>total_reps</code> and <code>total_sets</code>
+- Volume appears to be inconsistently recorded in Garmin exports
+- <strong>Recommendation</strong>: Use <code>calories</code> as primary magnitude metric; <code>reps</code>/<code>sets</code> as alternatives with caution</p>
+<h3>Metric Reliability Trade-offs</h3>
+<p>Different metrics capture different aspects of workout magnitude with varying reliability:</p>
+<ul>
+<li>
+<p><strong><code>calories</code></strong>: <strong>Most reliable for magnitude</strong> - consistently recorded, estimates energy expenditure based on heart rate, duration, and user profile. However, it's an estimation that may have individual errors.</p>
+</li>
+<li>
+<p><strong><code>total_reps</code> / <code>total_sets</code></strong>: <strong>Subject to counting errors</strong> - may not accurately capture effort if reps are miscounted or sets are incomplete. Don't account for weight lifted.</p>
+</li>
+<li>
+<p><strong><code>total_volume</code></strong>: <strong>Poor data quality</strong> - 86.3% of workouts have zero volume recorded.</p>
+</li>
+<li>
+<p><strong><code>duration</code></strong>: <strong>Doesn't capture intensity</strong> - a short intense workout may have greater physiological impact than a long light one.</p>
+</li>
+<li>
+<p><strong><code>count</code></strong>: <strong>Simple frequency</strong> - useful for workout occurrence but not magnitude.</p>
+</li>
+</ul>
+<p>For cross-lagged modeling of workout effects on weight, <code>calories</code> is recommended as the primary magnitude metric due to consistent recording and relevance to energy expenditure.</p>
+<h3>Exercise Detail Completeness</h3>
+<ul>
+<li>All workouts include <code>exercise_details</code> list (when <code>include_exercise_details=True</code>)</li>
+<li>Some exercises have <code>category: "UNKNOWN"</code> - Garmin may not classify all exercises</li>
+<li><code>volume</code> field within exercise details often zero</li>
+</ul>
+<h2>Aggregation Options</h2>
+<p>The <code>prepare_workout_aggregates()</code> function supports multiple aggregation strategies:</p>
+<h3>Time Aggregation</h3>
+<ul>
+<li><strong>Daily</strong>: Aggregate metrics per calendar day</li>
+<li><strong>Weekly</strong>: Aggregate metrics per week (starting Monday)</li>
+</ul>
+<h3>Metric Aggregation</h3>
+<table>
+<thead>
+<tr>
+<th>Metric</th>
+<th>Column Used</th>
+<th>Description</th>
+<th>Recommended</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>count</code></td>
+<td>None</td>
+<td>Number of workouts per time period</td>
+<td>Good for frequency analysis</td>
+</tr>
+<tr>
+<td><code>volume</code></td>
+<td><code>total_volume</code></td>
+<td>Total weight lifted</td>
+<td><strong>Not recommended</strong> due to data quality</td>
+</tr>
+<tr>
+<td><code>reps</code></td>
+<td><code>total_reps</code></td>
+<td>Total repetitions</td>
+<td><strong>Use with caution</strong> - potential counting errors, doesn't capture weight</td>
+</tr>
+<tr>
+<td><code>sets</code></td>
+<td><code>total_sets</code></td>
+<td>Total sets</td>
+<td><strong>Use with caution</strong> - potential counting errors, doesn't capture weight</td>
+</tr>
+<tr>
+<td><code>calories</code></td>
+<td><code>calories</code></td>
+<td>Total calories burned</td>
+<td><strong>Primary recommendation</strong> - most reliable magnitude metric, consistently recorded</td>
+</tr>
+<tr>
+<td><code>duration</code></td>
+<td><code>duration</code></td>
+<td>Total workout duration</td>
+<td>Useful for time commitment analysis</td>
+</tr>
+</tbody>
+</table>
+<h3>Handling Zero Days</h3>
+<p>When aggregating daily, many days have zero workouts. The <code>prepare_workout_for_stan()</code> function can fill missing days with zeros using <code>fill_missing=True</code>.</p>
+<h2>Usage in Cross-Lagged GP Models</h2>
+<h3>Current Implementation</h3>
+<p>The cross-lagged Gaussian Process model (<code>weight_gp_crosslagged.stan</code>) uses:
+- Fixed lag parameter (<code>lag_days</code>) specified as data
+- Single lagged workout value affects weight at time <code>t</code>
+- β parameter represents causal effect size
+- Model tested with lags: 0, 1, 2, 3, 7 days</p>
+<h3>Data Preparation Pipeline</h3>
+<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">src.data.workout</span><span class="w"> </span><span class="kn">import</span> <span class="n">load_strength_training_data</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">src.data.align</span><span class="w"> </span><span class="kn">import</span> <span class="n">prepare_crosslagged_stan_data</span>
+
+<span class="c1"># Load and aggregate workout data</span>
+<span class="n">df_workouts</span><span class="p">,</span> <span class="n">stan_data_workout</span> <span class="o">=</span> <span class="n">load_strength_training_data</span><span class="p">(</span>
+    <span class="n">aggregation</span><span class="o">=</span><span class="s2">&quot;daily&quot;</span><span class="p">,</span>
+    <span class="n">metric</span><span class="o">=</span><span class="s2">&quot;calories&quot;</span>  <span class="c1"># Most reliable magnitude metric</span>
+<span class="p">)</span>
+
+<span class="c1"># Prepare cross-lagged data (requires weight data)</span>
+<span class="n">stan_data</span> <span class="o">=</span> <span class="n">prepare_crosslagged_stan_data</span><span class="p">(</span>
+    <span class="n">stan_data_weight</span><span class="p">,</span>
+    <span class="n">stan_data_workout</span><span class="p">,</span>
+    <span class="n">lag_days</span><span class="o">=</span><span class="mi">2</span>
+<span class="p">)</span>
+</code></pre></div>
+<h3>Recommendations for Modeling</h3>
+<ol>
+<li><strong>Primary metric</strong>: Use <code>calories</code> as the most reliable magnitude metric (consistently recorded, estimates energy expenditure)</li>
+<li><strong>Alternative metrics</strong>: Consider <code>total_reps</code> or <code>total_sets</code> but be aware of potential counting errors</li>
+<li><strong>Aggregation</strong>: Daily aggregation with zero-fill for missing days</li>
+<li><strong>Lag testing</strong>: Test multiple lags (0-7 days) using WAIC/LOO comparison</li>
+<li><strong>Sparse data</strong>: Account for many zero days in workout time series</li>
+</ol>
+<h2>Temporal Patterns</h2>
+<h3>Workout Frequency</h3>
+<ul>
+<li>[To be populated from workout_report.py output]</li>
+<li>Average workouts per week: [ ]</li>
+<li>Most common workout days: [ ]</li>
+<li>Monthly trends: [ ]</li>
+</ul>
+<h3>Exercise Distribution</h3>
+<ul>
+<li>Top exercise categories by volume: [ ]</li>
+<li>Most frequent exercise types: [ ]</li>
+<li>Volume trends over time: [ ]</li>
+</ul>
+<h2>Integration with Other Health Metrics</h2>
+<p>Workout data can be correlated with:
+1. <strong>Weight</strong>: Muscle gain hypothesis (positive effect after 1-3 day lag)
+2. <strong>Sleep</strong>: Impact of evening workouts on sleep quality
+3. <strong>Heart Rate</strong>: Resting HR changes with training adaptation
+4. <strong>VO2 Max</strong>: Cardiovascular fitness improvements</p>
+<h2>Limitations and Considerations</h2>
+<h3>Garmin Export Limitations</h3>
+<ol>
+<li><strong>Volume data incomplete</strong>: Many workouts lack weight information</li>
+<li><strong>Exercise classification</strong>: Some exercises marked "UNKNOWN"</li>
+<li><strong>Timing precision</strong>: Only start time recorded, not exercise timing within workout</li>
+<li><strong>Missing metrics</strong>: No RPE (rate of perceived exertion) or intensity measures</li>
+</ol>
+<h3>Modeling Challenges</h3>
+<ol>
+<li><strong>Sparse time series</strong>: Many days without workouts (zeros)</li>
+<li><strong>Metric reliability trade-offs</strong>:</li>
+<li><code>calories</code>: Most consistently recorded but estimated (HR-based)</li>
+<li><code>reps</code>/<code>sets</code>: May have counting errors, don't capture weight</li>
+<li><code>volume</code>: Often zero (86.3% of workouts)</li>
+<li><code>duration</code>: Doesn't capture intensity</li>
+<li><strong>Variable workout intensity</strong>: Reps/sets don't capture weight lifted</li>
+<li><strong>Delayed effects</strong>: Physiological responses may have distributed lags</li>
+<li><strong>Individual variation</strong>: Response to training varies by person</li>
+</ol>
+<h2>Future Enhancements</h2>
+<h3>Data Improvements</h3>
+<ol>
+<li>Supplement with manual training log data</li>
+<li>Estimate volume from exercise categories and typical weights</li>
+<li>Add derived metrics (volume × reps, intensity index)</li>
+</ol>
+<h3>Modeling Extensions</h3>
+<ol>
+<li><strong>Estimated lag models</strong>: Treat lag as estimated parameter rather than fixed</li>
+<li><strong>Distributed lag models</strong>: Cumulative effects from multiple lag periods</li>
+<li><strong>Threshold models</strong>: Minimum workout intensity required for effect</li>
+<li><strong>Interaction models</strong>: Combined effects of workouts with sleep/nutrition</li>
+</ol>
+<h2>References</h2>
+<ul>
+<li><code>src/data/workout.py</code>: Primary data loading module</li>
+<li><code>src/analysis/workout_report.py</code>: Comprehensive analysis and visualization</li>
+<li><code>stan/weight_gp_crosslagged.stan</code>: Cross-lagged GP model</li>
+<li><code>src/data/align.py</code>: Data alignment for cross-lagged modeling</li>
+</ul>
+<hr>
+<p><em>Report generated: 2026-01-31</em>
+<em>Data source: Garmin DI-Connect-Fitness export</em>
+<em>Analysis code: <code>src/analysis/workout_report.py</code></em></p>
+
+    <footer>
+        <p>Generated from: workout_data_report.md</p>
+        <p>Last updated: 2026-01-31 22:37:50</p>
+        <p>Using MathJax v3 for mathematical notation rendering.</p>
+    </footer>
+</body>
+</html>

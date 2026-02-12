@@ -1,0 +1,290 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Bayesian Gaussian Process Model for Weight Analysis</title>
+
+    <!-- MathJax Configuration -->
+    <script>
+    MathJax = {
+        tex: {
+            inlineMath: [['$', '$'], ['\\(', '\\)']],
+            displayMath: [['$$', '$$'], ['\\[', '\\]']],
+            processEscapes: true,
+            processEnvironments: true
+        },
+        options: {
+            skipHtmlTags: ['script', 'noscript', 'style', 'textarea', 'pre']
+        }
+    };
+    </script>
+
+    <!-- Load MathJax -->
+    <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" async></script>
+
+    <!-- Basic styling -->
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        h1, h2, h3, h4 {
+            color: #2c3e50;
+            margin-top: 1.5em;
+            border-bottom: 1px solid #eee;
+            padding-bottom: 0.3em;
+        }
+
+        h1 { border-bottom: 2px solid #3498db; }
+
+        code {
+            background-color: #f8f8f8;
+            padding: 2px 4px;
+            border-radius: 3px;
+            font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
+        }
+
+        pre {
+            background-color: #f8f8f8;
+            padding: 15px;
+            border-radius: 5px;
+            overflow-x: auto;
+            border-left: 4px solid #3498db;
+        }
+
+        table {
+            border-collapse: collapse;
+            width: 100%;
+            margin: 1em 0;
+        }
+
+        th, td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: left;
+        }
+
+        th {
+            background-color: #f2f2f2;
+            font-weight: bold;
+        }
+
+        tr:nth-child(even) { background-color: #f9f9f9; }
+
+        .math, .arithmatex {
+            overflow-x: auto;
+            overflow-y: hidden;
+        }
+
+        .mjx-chtml { outline: none; }
+
+        footer {
+            margin-top: 3em;
+            padding-top: 1em;
+            border-top: 1px solid #eee;
+            color: #7f8c8d;
+            font-size: 0.9em;
+        }
+    </style>
+</head>
+<body>
+    <h1>Feature Check Quality System</h1>
+<h2>Overview</h2>
+<p>The Feature Check system automatically ensures that new features added to the codebase have corresponding tests and documentation. This quality check runs in CI/CD pipelines and can be run locally to catch missing tests or documentation early in the development process.</p>
+<h2>How It Works</h2>
+<h3>Feature Detection</h3>
+<p>The system detects new features by analyzing git changes:</p>
+<ul>
+<li><strong>New files</strong>: Any new JavaScript/TypeScript files in <code>scripts/</code>, <code>src/</code>, <code>lib/</code> directories</li>
+<li><strong>Significant changes</strong>: Existing files with more than 50 lines added</li>
+<li><strong>Excluded</strong>: Test files, documentation files, configuration files</li>
+</ul>
+<h3>Test Coverage Verification</h3>
+<p>For each detected feature, the system looks for corresponding test files:</p>
+<ul>
+<li><code>test/{feature}.test.js</code></li>
+<li><code>test/{feature}.unit.test.js</code></li>
+<li><code>test/{feature}.spec.js</code></li>
+<li>Tests that import or reference the feature</li>
+</ul>
+<h3>Documentation Verification</h3>
+<p>Features must be documented in at least one of:</p>
+<ul>
+<li><code>README.md</code> - Main project documentation</li>
+<li><code>docs/</code> directory - Detailed documentation</li>
+<li><code>.claude/commands/</code> - Command documentation</li>
+<li>File with matching name (e.g., <code>scripts/monitor.js</code> → <code>docs/monitor.md</code>)</li>
+</ul>
+<h2>Usage</h2>
+<h3>Local Testing</h3>
+<div class="highlight"><pre><span></span><code><span class="c1"># Run feature check manually</span>
+npm<span class="w"> </span>run<span class="w"> </span>feature:check
+
+<span class="c1"># Run as part of quality checks</span>
+npm<span class="w"> </span>run<span class="w"> </span>quality:all
+
+<span class="c1"># Run before committing</span>
+npm<span class="w"> </span>run<span class="w"> </span>commit:check
+</code></pre></div>
+<h3>CI/CD Integration</h3>
+<p>The feature check runs automatically in GitHub Actions:</p>
+<ul>
+<li>On push to main/develop branches</li>
+<li>On pull requests</li>
+<li>Can be triggered manually</li>
+</ul>
+<h3>Bypass Options</h3>
+<h4>Skip for Non-Feature Changes</h4>
+<p>The check automatically skips when changes are:
+- Test files only
+- Documentation only
+- Configuration files only</p>
+<h4>Manual Skip</h4>
+<div class="highlight"><pre><span></span><code><span class="c1"># Skip feature check for special cases</span>
+node<span class="w"> </span>scripts/feature-check.js<span class="w"> </span>--skip-feature-check
+</code></pre></div>
+<h4>Ignore Patterns</h4>
+<p>Create a <code>.featurecheckignore</code> file to exclude specific patterns:</p>
+<div class="highlight"><pre><span></span><code>scripts/experimental-*.js
+lib/vendor/*
+*.generated.js
+</code></pre></div>
+<h2>Error Messages</h2>
+<p>When features lack tests or documentation, you'll see clear error messages:</p>
+<div class="highlight"><pre><span></span><code>❌ Feature Check Failed
+
+New features must have tests and documentation:
+
+  ❌ Feature missing test coverage: scripts/new-analyzer.js
+  ❌ Feature missing documentation: scripts/new-analyzer.js
+
+To fix:
+  1. Add test files for new features in test/
+  2. Update documentation in README.md or docs/
+  3. Or use --skip-feature-check if this is not a feature
+</code></pre></div>
+<h2>Examples</h2>
+<h3>Valid Feature Addition</h3>
+<div class="highlight"><pre><span></span><code><span class="c1"># 1. Add new feature</span>
+<span class="nb">echo</span><span class="w"> </span><span class="s2">&quot;module.exports = { analyze: () =&gt; {} }&quot;</span><span class="w"> </span>&gt;<span class="w"> </span>scripts/analyzer.js
+
+<span class="c1"># 2. Add test</span>
+<span class="nb">echo</span><span class="w"> </span><span class="s2">&quot;const analyzer = require(&#39;../scripts/analyzer&#39;);&quot;</span><span class="w"> </span>&gt;<span class="w"> </span>test/analyzer.test.js
+
+<span class="c1"># 3. Add documentation</span>
+<span class="nb">echo</span><span class="w"> </span><span class="s2">&quot;## Analyzer\nAnalyzes code quality...&quot;</span><span class="w"> </span>&gt;&gt;<span class="w"> </span>README.md
+
+<span class="c1"># 4. Check passes</span>
+npm<span class="w"> </span>run<span class="w"> </span>feature:check
+✅<span class="w"> </span>Feature<span class="w"> </span>check<span class="w"> </span>passed<span class="w"> </span>-<span class="w"> </span>all<span class="w"> </span>features<span class="w"> </span>have<span class="w"> </span>tests<span class="w"> </span>and<span class="w"> </span>docs
+</code></pre></div>
+<h3>Fixing Missing Tests</h3>
+<div class="highlight"><pre><span></span><code><span class="c1"># Feature without test</span>
+git<span class="w"> </span>add<span class="w"> </span>scripts/reporter.js
+
+<span class="c1"># Check fails</span>
+npm<span class="w"> </span>run<span class="w"> </span>feature:check
+❌<span class="w"> </span>Feature<span class="w"> </span>missing<span class="w"> </span><span class="nb">test</span><span class="w"> </span>coverage:<span class="w"> </span>scripts/reporter.js
+
+<span class="c1"># Add test</span>
+cat<span class="w"> </span>&gt;<span class="w"> </span>test/reporter.test.js<span class="w"> </span><span class="s">&lt;&lt; EOF</span>
+<span class="s">const { describe, it } = require(&#39;node:test&#39;);</span>
+<span class="s">const reporter = require(&#39;../scripts/reporter&#39;);</span>
+
+<span class="s">describe(&#39;Reporter&#39;, () =&gt; {</span>
+<span class="s">  it(&#39;should generate reports&#39;, () =&gt; {</span>
+<span class="s">    // Test implementation</span>
+<span class="s">  });</span>
+<span class="s">});</span>
+<span class="s">EOF</span>
+
+<span class="c1"># Now check passes</span>
+npm<span class="w"> </span>run<span class="w"> </span>feature:check
+✅<span class="w"> </span>Feature<span class="w"> </span>check<span class="w"> </span>passed
+</code></pre></div>
+<h2>Configuration</h2>
+<h3>Thresholds</h3>
+<ul>
+<li><strong>New file threshold</strong>: Any new code file is considered a feature</li>
+<li><strong>Modification threshold</strong>: 50+ lines added to existing file</li>
+<li><strong>Test patterns</strong>: <code>.test.js</code>, <code>.spec.js</code>, <code>.unit.test.js</code></li>
+<li><strong>Doc locations</strong>: README.md, docs/, .claude/commands/</li>
+</ul>
+<h3>Environment Variables</h3>
+<ul>
+<li><code>GITHUB_BASE_REF</code>: Base branch for comparison in PRs (auto-set by GitHub Actions)</li>
+<li><code>SKIP_FEATURE_CHECK</code>: Set to skip checks entirely</li>
+</ul>
+<h2>Integration with Development Workflow</h2>
+<h3>TDD Workflow</h3>
+<ol>
+<li>Write failing test first (TDD RED)</li>
+<li>Implement feature (TDD GREEN)</li>
+<li>Documentation already required - no additional step</li>
+<li>Feature check passes automatically</li>
+</ol>
+<h3>Regular Development</h3>
+<ol>
+<li>Implement feature</li>
+<li>Run <code>npm run feature:check</code> locally</li>
+<li>Add missing tests/docs if needed</li>
+<li>Commit with confidence</li>
+</ol>
+<h2>Troubleshooting</h2>
+<h3>False Positives</h3>
+<p>If the system incorrectly identifies a file as a feature:</p>
+<ol>
+<li>Check if it matches exclusion patterns</li>
+<li>Add to <code>.featurecheckignore</code> if needed</li>
+<li>Use <code>--skip-feature-check</code> for one-off cases</li>
+</ol>
+<h3>Missing Detection</h3>
+<p>If a feature isn't detected:</p>
+<ol>
+<li>Ensure file has correct extension (.js, .ts, etc.)</li>
+<li>Check that changes meet threshold (50+ lines for modifications)</li>
+<li>Verify file isn't in excluded directory</li>
+</ol>
+<h3>Test Not Found</h3>
+<p>If tests exist but aren't detected:</p>
+<ol>
+<li>Follow naming convention: <code>{feature}.test.js</code></li>
+<li>Place tests in <code>test/</code> directory</li>
+<li>Ensure test file imports the feature</li>
+</ol>
+<h3>Documentation Not Found</h3>
+<p>If documentation exists but isn't detected:</p>
+<ol>
+<li>Include feature name in documentation</li>
+<li>Use recognizable variants (kebab-case, snake_case)</li>
+<li>Add to README.md for guaranteed detection</li>
+</ol>
+<h2>Benefits</h2>
+<ul>
+<li><strong>Quality Assurance</strong>: Ensures all features are tested</li>
+<li><strong>Documentation</strong>: Maintains up-to-date documentation</li>
+<li><strong>Early Detection</strong>: Catches issues before merge</li>
+<li><strong>Developer Friendly</strong>: Clear messages and bypass options</li>
+<li><strong>Automated</strong>: No manual review needed</li>
+</ul>
+<h2>Related Commands</h2>
+<ul>
+<li><code>npm run test</code> - Run all tests</li>
+<li><code>npm run docs</code> - Update documentation</li>
+<li><code>npm run quality:all</code> - Run all quality checks</li>
+<li><code>npm run commit:check</code> - Pre-commit validation</li>
+</ul>
+
+    <footer>
+        <p>Generated from: FEATURE_CHECK.md</p>
+        <p>Last updated: 2026-01-22 15:39:59</p>
+        <p>Using MathJax v3 for mathematical notation rendering.</p>
+    </footer>
+</body>
+</html>

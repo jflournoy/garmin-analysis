@@ -1,0 +1,406 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Bayesian Gaussian Process Model for Weight Analysis</title>
+
+    <!-- MathJax Configuration -->
+    <script>
+    MathJax = {
+        tex: {
+            inlineMath: [['$', '$'], ['\\(', '\\)']],
+            displayMath: [['$$', '$$'], ['\\[', '\\]']],
+            processEscapes: true,
+            processEnvironments: true
+        },
+        options: {
+            skipHtmlTags: ['script', 'noscript', 'style', 'textarea', 'pre']
+        }
+    };
+    </script>
+
+    <!-- Load MathJax -->
+    <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" async></script>
+
+    <!-- Basic styling -->
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        h1, h2, h3, h4 {
+            color: #2c3e50;
+            margin-top: 1.5em;
+            border-bottom: 1px solid #eee;
+            padding-bottom: 0.3em;
+        }
+
+        h1 { border-bottom: 2px solid #3498db; }
+
+        code {
+            background-color: #f8f8f8;
+            padding: 2px 4px;
+            border-radius: 3px;
+            font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
+        }
+
+        pre {
+            background-color: #f8f8f8;
+            padding: 15px;
+            border-radius: 5px;
+            overflow-x: auto;
+            border-left: 4px solid #3498db;
+        }
+
+        table {
+            border-collapse: collapse;
+            width: 100%;
+            margin: 1em 0;
+        }
+
+        th, td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: left;
+        }
+
+        th {
+            background-color: #f2f2f2;
+            font-weight: bold;
+        }
+
+        tr:nth-child(even) { background-color: #f9f9f9; }
+
+        .math, .arithmatex {
+            overflow-x: auto;
+            overflow-y: hidden;
+        }
+
+        .mjx-chtml { outline: none; }
+
+        footer {
+            margin-top: 3em;
+            padding-top: 1em;
+            border-top: 1px solid #eee;
+            color: #7f8c8d;
+            font-size: 0.9em;
+        }
+    </style>
+</head>
+<body>
+    <h1>Token-Efficient Command Architecture</h1>
+<h2>Overview</h2>
+<p>This repository demonstrates a token-efficient approach to Claude Code commands, reducing AI token consumption by <strong>85-90%</strong> through npm script delegation.</p>
+<h2>🎯 Choosing the Right Approach</h2>
+<p>This repository demonstrates various ways of setting up Claude Code commands, including methods that limit token usage. You'll see these three methods:</p>
+<table>
+<thead>
+<tr>
+<th>Approach</th>
+<th>Token Cost</th>
+<th>Best For</th>
+<th>Example</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Direct Implementation</strong></td>
+<td>~2000 tokens</td>
+<td>Learning patterns, one-off tasks, custom logic</td>
+<td>Claude analyzes and formats commits directly</td>
+</tr>
+<tr>
+<td><strong>Script Delegation</strong></td>
+<td>~100 tokens</td>
+<td>Repetitive tasks, stable operations</td>
+<td><code>npm run lint</code> instead of manual checks</td>
+</tr>
+<tr>
+<td><strong>Hybrid Approach</strong></td>
+<td>~500 tokens</td>
+<td>Complex orchestration, intelligent automation</td>
+<td>Script collects data, Claude makes decisions</td>
+</tr>
+</tbody>
+</table>
+<h3>When to Use Each Approach</h3>
+<p><strong>Use Direct Implementation when:</strong>
+- Teaching or learning new patterns
+- Solving unique, one-time problems
+- Customization is more valuable than efficiency
+- You need to see Claude's problem-solving process</p>
+<p><strong>Use Script Delegation when:</strong>
+- The task is repetitive and well-defined
+- The logic rarely changes
+- Speed and consistency matter more than flexibility
+- You're doing the same thing multiple times per session</p>
+<p><strong>Use Hybrid Approach when:</strong>
+- You need both efficiency and intelligence
+- The task has stable parts and variable parts
+- You want to leverage existing tools with AI judgment
+- Real-world complexity requires both patterns</p>
+<p>Each command in this repository includes metadata showing its approach and typical token usage, helping you understand the real costs and benefits of different patterns.</p>
+<h2>The Problem</h2>
+<p>Traditional Claude Code commands embed all logic directly in markdown files:
+- Commands average 250-450 lines
+- Claude reads entire file content on each use
+- 19 commands × 300 lines = 5,700 lines per full scan
+- Significant token consumption for repetitive tasks</p>
+<h2>The Solution: NPM Script Delegation</h2>
+<h3>Architecture</h3>
+<div class="highlight"><pre><span></span><code>┌─────────────────────┐
+│  Minimal Command    │  (20-40 lines)
+│   /hygiene.md       │
+└──────────┬──────────┘
+           │ Delegates to
+           ▼
+┌─────────────────────┐
+│   NPM Scripts       │  (package.json)
+│  npm run hygiene    │
+└─────────────────────┘
+</code></pre></div>
+<h3>Token Savings</h3>
+<table>
+<thead>
+<tr>
+<th>Command</th>
+<th>Original</th>
+<th>Optimized</th>
+<th>Reduction</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>/hygiene</td>
+<td>264 lines</td>
+<td>30 lines</td>
+<td>88%</td>
+</tr>
+<tr>
+<td>/commit</td>
+<td>296 lines</td>
+<td>33 lines</td>
+<td>88%</td>
+</tr>
+<tr>
+<td>/maintainability</td>
+<td>458 lines</td>
+<td>42 lines</td>
+<td>90%</td>
+</tr>
+<tr>
+<td>/todo</td>
+<td>305 lines</td>
+<td>43 lines</td>
+<td>85%</td>
+</tr>
+<tr>
+<td><strong>Average</strong></td>
+<td><strong>330 lines</strong></td>
+<td><strong>37 lines</strong></td>
+<td><strong>89%</strong></td>
+</tr>
+</tbody>
+</table>
+<h2>Implementation Guide</h2>
+<h3>1. Create NPM Scripts</h3>
+<p>Add comprehensive scripts to <code>package.json</code>:</p>
+<div class="highlight"><pre><span></span><code><span class="p">{</span>
+<span class="w">  </span><span class="nt">&quot;scripts&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="nt">&quot;hygiene&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;npm run hygiene:quick --silent&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;hygiene:quick&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;npm run lint:check &amp;&amp; npm run test:check&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;lint:check&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;eslint . --max-warnings 10 || echo &#39;No linter&#39;&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;test:check&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;npm test || echo &#39;No tests&#39;&quot;</span>
+<span class="w">  </span><span class="p">}</span>
+<span class="p">}</span>
+</code></pre></div>
+<h3>2. Minimize Command Files</h3>
+<p>Transform verbose commands into minimal delegates:</p>
+<p><strong>Before</strong> (264 lines):
+<div class="highlight"><pre><span></span><code><span class="gh"># Project Hygiene Check</span>
+
+[... 250+ lines of bash logic ...]
+</code></pre></div></p>
+<p><strong>After</strong> (30 lines):
+<div class="highlight"><pre><span></span><code><span class="gh"># Project Hygiene Check</span>
+
+\`\`\`bash
+npm run hygiene:full --silent
+\`\`\`
+</code></pre></div></p>
+<h3>3. Benefits</h3>
+<h4>For Users</h4>
+<ul>
+<li><strong>Faster Claude responses</strong> - Less content to parse</li>
+<li><strong>Lower costs</strong> - Fewer tokens consumed</li>
+<li><strong>Better performance</strong> - Scripts run natively</li>
+<li><strong>Reusability</strong> - Scripts work without Claude</li>
+</ul>
+<h4>For Development</h4>
+<ul>
+<li><strong>Maintainability</strong> - Logic in one place</li>
+<li><strong>Testability</strong> - Scripts testable independently</li>
+<li><strong>Version control</strong> - Smaller diffs</li>
+<li><strong>Cross-platform</strong> - NPM works everywhere</li>
+</ul>
+<h2>Usage Patterns</h2>
+<h3>Direct NPM Script Execution</h3>
+<p>Users can run scripts directly without Claude:
+<div class="highlight"><pre><span></span><code>npm<span class="w"> </span>run<span class="w"> </span>hygiene
+npm<span class="w"> </span>run<span class="w"> </span>lint:check
+npm<span class="w"> </span>run<span class="w"> </span>maintain:debt
+</code></pre></div></p>
+<h3>Command Templates</h3>
+<p>Commands become simple script invocations:
+<div class="highlight"><pre><span></span><code>/hygiene<span class="w">        </span><span class="c1"># → npm run hygiene</span>
+/commit<span class="w"> </span>feat<span class="w">    </span><span class="c1"># → npm run quality:pre-commit &amp;&amp; git commit</span>
+/todo<span class="w"> </span>list<span class="w">      </span><span class="c1"># → npm run todo:list</span>
+</code></pre></div></p>
+<h2>Migration Strategy</h2>
+<h3>Phase 1: High-Value Commands</h3>
+<p>Migrate commands with most lines first:
+1. /maintainability (458 → 42 lines)
+2. /issue (442 → ~40 lines)
+3. /version-tag (437 → ~40 lines)</p>
+<h3>Phase 2: Core Workflow</h3>
+<p>Migrate frequently-used commands:
+1. /hygiene (264 → 30 lines)
+2. /commit (296 → 33 lines)
+3. /todo (305 → 43 lines)</p>
+<h3>Phase 3: Remaining Commands</h3>
+<p>Complete migration for all commands.</p>
+<h2>NPM Script Categories</h2>
+<h3>Core Workflow</h3>
+<div class="highlight"><pre><span></span><code><span class="nt">&quot;hygiene&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Full health check&quot;</span><span class="p">,</span>
+<span class="nt">&quot;todo:list&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Show tasks&quot;</span><span class="p">,</span>
+<span class="nt">&quot;commit:check&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Pre-commit validation&quot;</span>
+</code></pre></div>
+<h3>Quality Checks</h3>
+<div class="highlight"><pre><span></span><code><span class="nt">&quot;lint:check&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Code style validation&quot;</span><span class="p">,</span>
+<span class="nt">&quot;test:check&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Run test suite&quot;</span><span class="p">,</span>
+<span class="nt">&quot;build:check&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Build verification&quot;</span>
+</code></pre></div>
+<h3>Git Operations</h3>
+<div class="highlight"><pre><span></span><code><span class="nt">&quot;git:status:summary&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Quick git status&quot;</span><span class="p">,</span>
+<span class="nt">&quot;git:check:staged&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Verify staged files&quot;</span><span class="p">,</span>
+<span class="nt">&quot;git:unpushed&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Count unpushed commits&quot;</span>
+</code></pre></div>
+<h3>Maintainability</h3>
+<div class="highlight"><pre><span></span><code><span class="nt">&quot;maintain:files&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Count code files&quot;</span><span class="p">,</span>
+<span class="nt">&quot;maintain:debt&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Find TODO/FIXME&quot;</span><span class="p">,</span>
+<span class="nt">&quot;maintain:largest&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Identify large files&quot;</span>
+</code></pre></div>
+<h2>Best Practices</h2>
+<h3>1. Script Naming Convention</h3>
+<ul>
+<li>Use colons for namespacing: <code>category:action</code></li>
+<li>Keep names descriptive but concise</li>
+<li>Group related scripts together</li>
+</ul>
+<h3>2. Error Handling</h3>
+<ul>
+<li>Use <code>|| echo 'message'</code> for graceful failures</li>
+<li>Provide helpful error messages</li>
+<li>Return appropriate exit codes</li>
+</ul>
+<h3>3. Silent Flags</h3>
+<ul>
+<li>Use <code>--silent</code> to reduce noise</li>
+<li>Pipe to <code>/dev/null</code> when appropriate</li>
+<li>Keep output focused and relevant</li>
+</ul>
+<h3>4. Composition</h3>
+<ul>
+<li>Build complex scripts from simple ones</li>
+<li>Use <code>&amp;&amp;</code> for sequential execution</li>
+<li>Create <code>:quick</code> and <code>:full</code> variants</li>
+</ul>
+<h2>Examples</h2>
+<h3>Minimal Hygiene Command</h3>
+<div class="highlight"><pre><span></span><code>---
+allowed-tools: [Bash]
+<span class="gu">description: Project health check</span>
+<span class="gu">---</span>
+
+<span class="gh"># Project Hygiene Check</span>
+
+\`\`\`bash
+npm run hygiene:full --silent
+\`\`\`
+</code></pre></div>
+<h3>Minimal Commit Command</h3>
+<div class="highlight"><pre><span></span><code>---
+allowed-tools: [Bash]
+<span class="gu">description: Quality-checked commit</span>
+<span class="gu">---</span>
+
+<span class="gh"># Quality Commit</span>
+
+\`\`\`bash
+npm run quality:pre-commit --silent || exit 1
+git commit -m &quot;$1: $2&quot;
+\`\`\`
+</code></pre></div>
+<h2>Measuring Success</h2>
+<h3>Token Metrics</h3>
+<ul>
+<li>Original: ~5,700 lines total</li>
+<li>Optimized: ~700 lines total</li>
+<li><strong>Savings: 87% reduction</strong></li>
+</ul>
+<h3>Performance Metrics</h3>
+<ul>
+<li>Faster command execution</li>
+<li>Reduced Claude response time</li>
+<li>Lower API costs</li>
+</ul>
+<h3>Developer Experience</h3>
+<ul>
+<li>Scripts work standalone</li>
+<li>Easy to test and debug</li>
+<li>Familiar npm ecosystem</li>
+</ul>
+<h2>Future Optimizations</h2>
+<h3>1. Node.js Scripts</h3>
+<p>For complex logic, use JavaScript:
+<div class="highlight"><pre><span></span><code><span class="c1">// scripts/maintainability.js</span>
+<span class="err">#</span><span class="o">!</span><span class="err">/usr/bin/env node</span>
+<span class="kd">const</span><span class="w"> </span><span class="nx">score</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nx">calculateMaintainability</span><span class="p">();</span>
+<span class="nx">console</span><span class="p">.</span><span class="nx">log</span><span class="p">(</span><span class="sb">`Score: </span><span class="si">${</span><span class="nx">score</span><span class="si">}</span><span class="sb">/100`</span><span class="p">);</span>
+</code></pre></div></p>
+<h3>2. Configuration Files</h3>
+<p>Move thresholds to config:
+<div class="highlight"><pre><span></span><code><span class="c1">// .claude-config.json</span>
+<span class="p">{</span>
+<span class="w">  </span><span class="nt">&quot;lint&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nt">&quot;maxWarnings&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">10</span><span class="w"> </span><span class="p">},</span>
+<span class="w">  </span><span class="nt">&quot;test&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nt">&quot;minCoverage&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">80</span><span class="w"> </span><span class="p">}</span>
+<span class="p">}</span>
+</code></pre></div></p>
+<h3>3. Command Aliases</h3>
+<p>Create ultra-minimal aliases:
+<div class="highlight"><pre><span></span><code><span class="gh"># h.md (alias for hygiene)</span>
+\`\`\`bash
+npm run hygiene
+\`\`\`
+</code></pre></div></p>
+<h2>Conclusion</h2>
+<p>By delegating to npm scripts, we achieve:
+- <strong>87% token reduction</strong> on average
+- <strong>Better performance</strong> through native execution
+- <strong>Improved maintainability</strong> with centralized logic
+- <strong>Cross-platform compatibility</strong> via npm</p>
+<p>This architecture represents best practices for token-efficient Claude Code command development.</p>
+
+    <footer>
+        <p>Generated from: TOKEN_EFFICIENCY.md</p>
+        <p>Last updated: 2026-01-22 15:39:59</p>
+        <p>Using MathJax v3 for mathematical notation rendering.</p>
+    </footer>
+</body>
+</html>

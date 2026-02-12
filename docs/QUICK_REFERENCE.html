@@ -1,0 +1,375 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Bayesian Gaussian Process Model for Weight Analysis</title>
+
+    <!-- MathJax Configuration -->
+    <script>
+    MathJax = {
+        tex: {
+            inlineMath: [['$', '$'], ['\\(', '\\)']],
+            displayMath: [['$$', '$$'], ['\\[', '\\]']],
+            processEscapes: true,
+            processEnvironments: true
+        },
+        options: {
+            skipHtmlTags: ['script', 'noscript', 'style', 'textarea', 'pre']
+        }
+    };
+    </script>
+
+    <!-- Load MathJax -->
+    <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" async></script>
+
+    <!-- Basic styling -->
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        h1, h2, h3, h4 {
+            color: #2c3e50;
+            margin-top: 1.5em;
+            border-bottom: 1px solid #eee;
+            padding-bottom: 0.3em;
+        }
+
+        h1 { border-bottom: 2px solid #3498db; }
+
+        code {
+            background-color: #f8f8f8;
+            padding: 2px 4px;
+            border-radius: 3px;
+            font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
+        }
+
+        pre {
+            background-color: #f8f8f8;
+            padding: 15px;
+            border-radius: 5px;
+            overflow-x: auto;
+            border-left: 4px solid #3498db;
+        }
+
+        table {
+            border-collapse: collapse;
+            width: 100%;
+            margin: 1em 0;
+        }
+
+        th, td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: left;
+        }
+
+        th {
+            background-color: #f2f2f2;
+            font-weight: bold;
+        }
+
+        tr:nth-child(even) { background-color: #f9f9f9; }
+
+        .math, .arithmatex {
+            overflow-x: auto;
+            overflow-y: hidden;
+        }
+
+        .mjx-chtml { outline: none; }
+
+        footer {
+            margin-top: 3em;
+            padding-top: 1em;
+            border-top: 1px solid #eee;
+            color: #7f8c8d;
+            font-size: 0.9em;
+        }
+    </style>
+</head>
+<body>
+    <h1>Claude Code Commands - Quick Reference</h1>
+<h2>Essential Commands (Use Daily)</h2>
+<table>
+<thead>
+<tr>
+<th>Command</th>
+<th>Purpose</th>
+<th>Example</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>/hygiene</code></td>
+<td>Project health check</td>
+<td><code>/hygiene</code></td>
+</tr>
+<tr>
+<td><code>/todo</code></td>
+<td>Task management</td>
+<td><code>/todo add "Fix bug"</code></td>
+</tr>
+<tr>
+<td><code>/commit</code></td>
+<td>Quality-checked commits</td>
+<td><code>/commit</code></td>
+</tr>
+<tr>
+<td><code>/next</code></td>
+<td>Get AI recommendations</td>
+<td><code>/next</code></td>
+</tr>
+</tbody>
+</table>
+<h2>All Commands by Category</h2>
+<h3>🎯 Core Workflow</h3>
+<div class="highlight"><pre><span></span><code>/hygiene<span class="w">              </span><span class="c1"># Check project health (lint, tests, deps)</span>
+/todo<span class="w"> </span><span class="o">[</span>add<span class="p">|</span><span class="k">done</span><span class="p">|</span>list<span class="o">]</span><span class="w"> </span><span class="c1"># Manage tasks in GitHub Issues</span>
+/commit<span class="w">               </span><span class="c1"># Commit with quality checks</span>
+/next<span class="w">                 </span><span class="c1"># AI-recommended next actions</span>
+/push<span class="w">                 </span><span class="c1"># Push with quality checks</span>
+</code></pre></div>
+<h3>📋 Development &amp; Testing</h3>
+<div class="highlight"><pre><span></span><code>/tdd<span class="w"> </span>start<span class="w"> </span><span class="s2">&quot;feature&quot;</span><span class="w">  </span><span class="c1"># Start Test-Driven Development workflow</span>
+/retrospective<span class="w">        </span><span class="c1"># Analyze git history and patterns</span>
+/monitor<span class="w">              </span><span class="c1"># Check GitHub CI status</span>
+</code></pre></div>
+<h3>📚 Documentation &amp; Learning</h3>
+<div class="highlight"><pre><span></span><code>/docs<span class="w">                 </span><span class="c1"># Analyze and update documentation</span>
+/docs-explain<span class="w">         </span><span class="c1"># Explain documentation structure</span>
+/learn<span class="w"> </span><span class="s2">&quot;insight&quot;</span><span class="w">      </span><span class="c1"># Capture development insights</span>
+/reflect<span class="w">              </span><span class="c1"># End-of-session reflection</span>
+</code></pre></div>
+<h2>Common Workflows</h2>
+<h3>🌅 Start of Day</h3>
+<div class="highlight"><pre><span></span><code>/hygiene<span class="w">              </span><span class="c1"># Check project status</span>
+/todo<span class="w"> </span>list<span class="w">            </span><span class="c1"># Review tasks</span>
+/next<span class="w">                 </span><span class="c1"># Get recommendations</span>
+</code></pre></div>
+<h3>💻 During Development</h3>
+<div class="highlight"><pre><span></span><code>/todo<span class="w"> </span>add<span class="w"> </span><span class="s2">&quot;task&quot;</span><span class="w">      </span><span class="c1"># Track new work</span>
+/tdd<span class="w"> </span>start<span class="w"> </span><span class="s2">&quot;feature&quot;</span><span class="w">  </span><span class="c1"># TDD for new features</span>
+/learn<span class="w"> </span><span class="s2">&quot;insight&quot;</span><span class="w">      </span><span class="c1"># Capture discoveries</span>
+</code></pre></div>
+<h3>🌙 End of Session</h3>
+<div class="highlight"><pre><span></span><code>/commit<span class="w">               </span><span class="c1"># Commit changes</span>
+/reflect<span class="w">              </span><span class="c1"># Capture session learnings</span>
+/push<span class="w">                 </span><span class="c1"># Push to remote</span>
+</code></pre></div>
+<h2>Task Management (<code>/todo</code>)</h2>
+<div class="highlight"><pre><span></span><code><span class="c1"># Basic Operations</span>
+/todo<span class="w">                      </span><span class="c1"># List all tasks</span>
+/todo<span class="w"> </span>add<span class="w"> </span><span class="s2">&quot;Fix login&quot;</span><span class="w">      </span><span class="c1"># Add new task</span>
+/todo<span class="w"> </span><span class="k">done</span><span class="w"> </span><span class="m">1</span><span class="w">              </span><span class="c1"># Complete task #1</span>
+/todo<span class="w"> </span><span class="k">done</span><span class="w"> </span><span class="s2">&quot;login&quot;</span><span class="w">        </span><span class="c1"># Complete by text match</span>
+/todo<span class="w"> </span>remove<span class="w"> </span><span class="m">2</span><span class="w">            </span><span class="c1"># Delete task</span>
+
+<span class="c1"># Advanced</span>
+/todo<span class="w"> </span>priority<span class="w"> </span><span class="s2">&quot;Critical&quot;</span><span class="w">  </span><span class="c1"># Add high-priority task</span>
+/todo<span class="w"> </span>cleanup<span class="w">             </span><span class="c1"># Archive completed tasks</span>
+/todo<span class="w"> </span>list<span class="w"> </span>--all<span class="w">          </span><span class="c1"># Show including completed</span>
+</code></pre></div>
+<h2>Commit Types (<code>/commit</code>)</h2>
+<p>The <code>/commit</code> command will guide you through creating quality-checked commits with proper formatting.</p>
+<table>
+<thead>
+<tr>
+<th>Type</th>
+<th>Use For</th>
+<th>Example</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>feat</code></td>
+<td>New features</td>
+<td><code>feat: add authentication</code></td>
+</tr>
+<tr>
+<td><code>fix</code></td>
+<td>Bug fixes</td>
+<td><code>fix: resolve login crash</code></td>
+</tr>
+<tr>
+<td><code>docs</code></td>
+<td>Documentation</td>
+<td><code>docs: update README</code></td>
+</tr>
+<tr>
+<td><code>test</code></td>
+<td>Adding tests</td>
+<td><code>test: add unit tests</code></td>
+</tr>
+<tr>
+<td><code>refactor</code></td>
+<td>Code restructuring</td>
+<td><code>refactor: simplify logic</code></td>
+</tr>
+<tr>
+<td><code>chore</code></td>
+<td>Maintenance</td>
+<td><code>chore: update dependencies</code></td>
+</tr>
+<tr>
+<td><code>style</code></td>
+<td>Formatting</td>
+<td><code>style: fix indentation</code></td>
+</tr>
+</tbody>
+</table>
+<h2>Quick Decision Tree</h2>
+<div class="highlight"><pre><span></span><code>Need to know project status?
+  → /hygiene
+
+Starting new feature?
+  → /tdd start &quot;feature name&quot;
+
+Ready to commit?
+  → /commit
+
+Not sure what to do?
+  → /next
+
+Found a bug?
+  → /todo add &quot;fix bug&quot; → fix it → /commit
+
+Need to understand project?
+  → /docs-explain
+
+Want to check CI?
+  → /monitor
+
+End of session?
+  → /reflect → /commit → /push
+</code></pre></div>
+<h2>Command Details</h2>
+<h3><code>/hygiene</code> - Project Health Check</h3>
+<ul>
+<li>Runs linting checks</li>
+<li>Executes test suite</li>
+<li>Checks for outdated dependencies</li>
+<li>Shows git status summary</li>
+<li>Quick way to ensure everything is working</li>
+</ul>
+<h3><code>/todo</code> - Task Management</h3>
+<ul>
+<li>Maintains tasks in GitHub Issues</li>
+<li>Supports add, done, remove, list operations</li>
+<li>Tracks task completion</li>
+<li>Archives completed tasks</li>
+</ul>
+<h3><code>/commit</code> - Quality Commits</h3>
+<ul>
+<li>Runs quality checks before committing</li>
+<li>Enforces atomic commits (1-3 files recommended)</li>
+<li>Adds co-author attribution for Claude</li>
+<li>Follows conventional commit format</li>
+</ul>
+<h3><code>/next</code> - AI Recommendations</h3>
+<ul>
+<li>Analyzes project state</li>
+<li>Suggests next logical steps</li>
+<li>Considers pending tasks and recent changes</li>
+<li>Helps when you're unsure what to do</li>
+</ul>
+<h3><code>/tdd</code> - Test-Driven Development</h3>
+<ul>
+<li>Guides through RED-GREEN-REFACTOR cycle</li>
+<li>Creates failing tests first</li>
+<li>Implements minimal code to pass</li>
+<li>Refactors with test safety net</li>
+</ul>
+<h3><code>/monitor</code> - CI Monitoring</h3>
+<ul>
+<li>Checks GitHub Actions status</li>
+<li>Shows recent workflow runs</li>
+<li>Identifies test failures</li>
+<li>Tracks pull request status</li>
+</ul>
+<h3><code>/docs</code> - Documentation Management</h3>
+<ul>
+<li>Updates command catalog</li>
+<li>Checks for broken links</li>
+<li>Maintains documentation consistency</li>
+<li>Auto-generates documentation</li>
+</ul>
+<h3><code>/learn</code> - Knowledge Capture</h3>
+<ul>
+<li>Records development insights</li>
+<li>Maintains LEARNINGS.md</li>
+<li>Archives learnings by date</li>
+<li>Searchable knowledge base</li>
+</ul>
+<h3><code>/reflect</code> - Session Reflection</h3>
+<ul>
+<li>Captures end-of-session insights</li>
+<li>Reviews accomplishments</li>
+<li>Identifies patterns</li>
+<li>Builds learning history</li>
+</ul>
+<h3><code>/retrospective</code> - Git Analysis</h3>
+<ul>
+<li>Analyzes commit patterns</li>
+<li>Shows productivity metrics</li>
+<li>Identifies improvement areas</li>
+<li>Historical code analysis</li>
+</ul>
+<h3><code>/push</code> - Safe Push</h3>
+<ul>
+<li>Runs quality checks</li>
+<li>Validates before pushing</li>
+<li>Ensures CI readiness</li>
+<li>Prevents breaking builds</li>
+</ul>
+<h2>File Locations</h2>
+<div class="highlight"><pre><span></span><code>.claude/
+├── commands/         # Command templates (customize here)
+│   ├── hygiene.md
+│   ├── todo.md
+│   ├── commit.md
+│   ├── tdd.md
+│   └── ...
+└── learnings/       # Archived insights (/learn)
+
+GitHub Issues        # Current tasks (/todo)
+LEARNINGS.md         # Captured insights (/learn)
+CLAUDE.md            # AI guidelines
+</code></pre></div>
+<h2>Customization</h2>
+<h3>Modify Commands</h3>
+<p>Edit files in <code>.claude/commands/</code>:
+<div class="highlight"><pre><span></span><code><span class="c1"># Make hygiene stricter</span>
+vim<span class="w"> </span>.claude/commands/hygiene.md
+<span class="c1"># Adjust quality thresholds</span>
+</code></pre></div></p>
+<h3>Create Command Aliases</h3>
+<div class="highlight"><pre><span></span><code><span class="c1"># Create short aliases</span>
+cp<span class="w"> </span>.claude/commands/hygiene.md<span class="w"> </span>.claude/commands/h.md
+cp<span class="w"> </span>.claude/commands/todo.md<span class="w"> </span>.claude/commands/t.md
+</code></pre></div>
+<h2>Best Practices</h2>
+<ol>
+<li><strong>Start with <code>/hygiene</code></strong> - Know your project state</li>
+<li><strong>Use <code>/todo</code> continuously</strong> - Never lose track of work</li>
+<li><strong>Commit frequently</strong> - Use <code>/commit</code> for quality checks</li>
+<li><strong>Document insights</strong> - Use <code>/learn</code> regularly</li>
+<li><strong>Use TDD</strong> - <code>/tdd start</code> for new features</li>
+<li><strong>Check CI</strong> - <code>/monitor</code> before pushing</li>
+<li><strong>Reflect regularly</strong> - <code>/reflect</code> at session end</li>
+</ol>
+<hr>
+<p><em>This reference covers all actual commands available in the claude-setup project.</em></p>
+
+    <footer>
+        <p>Generated from: QUICK_REFERENCE.md</p>
+        <p>Last updated: 2026-01-22 15:39:59</p>
+        <p>Using MathJax v3 for mathematical notation rendering.</p>
+    </footer>
+</body>
+</html>
