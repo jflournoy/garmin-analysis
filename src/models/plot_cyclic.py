@@ -1755,20 +1755,28 @@ def plot_state_space_spline_decomposition(
     total_samples = fitness_effect_samples + f_gp_samples + f_daily_samples
 
     # Compute means and credible intervals for each component (back-transformed)
-    def back_transform(samples):
+    def back_transform_component(samples):
+        mean = samples.mean(axis=(0, 1)) * y_sd
+        lower = np.percentile(samples, 2.5, axis=(0, 1)) * y_sd
+        upper = np.percentile(samples, 97.5, axis=(0, 1)) * y_sd
+        return mean, lower, upper
+
+    def back_transform_total(samples):
         mean = samples.mean(axis=(0, 1)) * y_sd + y_mean
         lower = np.percentile(samples, 2.5, axis=(0, 1)) * y_sd + y_mean
         upper = np.percentile(samples, 97.5, axis=(0, 1)) * y_sd + y_mean
         return mean, lower, upper
 
-    total_mean, total_lower, total_upper = back_transform(total_samples)
-    fitness_mean_bt, fitness_lower, fitness_upper = back_transform(fitness_effect_samples)
-    gp_mean_bt, gp_lower, gp_upper = back_transform(f_gp_samples)
-    daily_mean_bt, daily_lower, daily_upper = back_transform(f_daily_samples)
+    total_mean, total_lower, total_upper = back_transform_total(total_samples)
+    fitness_mean_bt, fitness_lower, fitness_upper = back_transform_component(fitness_effect_samples)
+    gp_mean_bt, gp_lower, gp_upper = back_transform_component(f_gp_samples)
+    daily_mean_bt, daily_lower, daily_upper = back_transform_component(f_daily_samples)
 
     # Get observation residuals (observed - predicted)
     obs_weight = df_weight['weight_lbs'].values
     residuals = obs_weight - total_mean
+    # Compute detrended observations (weight minus fitness effect minus GP trend)
+    detrended_obs = obs_weight - fitness_mean_bt - gp_mean_bt - y_mean
 
     # Plot stacked area or line decomposition
     timestamps = df_weight['timestamp']
@@ -1840,18 +1848,18 @@ def plot_state_space_spline_decomposition(
             ax_daily_pattern.fill_between(hour_grid, daily_pattern_lower, daily_pattern_upper,
                                          alpha=0.3, color='blue', label='95% CI')
 
-        # Add actual daily component values from observations
+        # Add detrended observations (weight minus fitness effect minus GP trend)
         hour_of_day = stan_data.get('hour_of_day', None)
         if hour_of_day is not None:
             # Validate dimension match
-            if len(hour_of_day) != len(daily_mean_bt):
+            if len(hour_of_day) != len(detrended_obs):
                 raise ValueError(
                     f"hour_of_day length ({len(hour_of_day)}) does not match "
-                    f"daily_mean_bt length ({len(daily_mean_bt)})"
+                    f"detrended_obs length ({len(detrended_obs)})"
                 )
-            # Get unique hour values (bin)
-            ax_daily_pattern.scatter(hour_of_day, daily_mean_bt, alpha=0.3, s=10, color='red',
-                                   label='Observed daily component')
+            # Plot detrended observations vs hour of day
+            ax_daily_pattern.scatter(hour_of_day, detrended_obs, alpha=0.3, s=10, color='red',
+                                   label='Detrended observations')
 
         ax_daily_pattern.set_xlabel('Hour of day')
         ax_daily_pattern.set_ylabel('Weight effect (lbs)')
@@ -1954,6 +1962,168 @@ def plot_state_space_spline_decomposition(
     if output_path:
         plt.savefig(output_path, dpi=150, bbox_inches='tight')
         print(f'Saved state-space spline decomposition plot to {output_path}')
+
+    return fig
+
+
+def plot_state_space_component_details(
+    idata,
+    df_weight,
+    df_intensity,
+    stan_data,
+    model_name: str,
+    output_path: str = None,
+    show_ci: bool = True,
+):
+    """Plot detailed component-by-component views for state-space spline model.
+
+    Creates a 2x2 grid showing:
+    1. Fitness effect over time (gamma * fitness)
+    2. GP trend component over time
+    3. Daily spline component over time
+    4. Residuals (observed - predicted) over time
+
+    Args:
+        idata: ArviZ InferenceData from state-space spline model fit
+        df_weight: DataFrame with weight observations (columns: timestamp, weight_lbs)
+        df_intensity: DataFrame with daily intensity (columns: date, intensity)
+        stan_data: Stan data dictionary with scaling parameters
+        model_name: Name of model for plot title
+        output_path: Path to save plot (optional)
+        show_ci: Whether to show 95% credible intervals
+
+    Returns:
+        matplotlib Figure object
+    """
+    # Back-transform scaling parameters
+    y_mean = stan_data.get("_y_mean", 0.0)
+    y_sd = stan_data.get("_y_sd", 1.0)
+    intensity_mean = stan_data.get("intensity_mean", 0.0)
+    intensity_std = stan_data.get("intensity_std", 1.0)
+
+    # Create figure with 2x2 subplots
+    fig, axes = plt.subplots(2, 2, figsize=(16, 12))
+    ax_fitness = axes[0, 0]
+    ax_gp = axes[0, 1]
+    ax_daily = axes[1, 0]
+    ax_residuals = axes[1, 1]
+
+    # Extract component samples (same as decomposition function)
+    if 'fitness_stored' not in idata.posterior:
+        raise ValueError("Missing fitness_stored in posterior")
+    if 'f_gp_stored' not in idata.posterior:
+        raise ValueError("Missing f_gp_stored in posterior")
+    if 'f_daily_stored' not in idata.posterior:
+        raise ValueError("Missing f_daily_stored in posterior - model may not include daily spline")
+    if 'gamma' not in idata.posterior:
+        raise ValueError("Missing gamma parameter in posterior")
+
+    gamma_samples = idata.posterior['gamma'].values  # shape (chain, draw)
+    gamma_mean = gamma_samples.mean()
+
+    fitness_samples = idata.posterior['fitness_stored'].values  # (chain, draw, D)
+    f_gp_samples = idata.posterior['f_gp_stored'].values  # (chain, draw, N_weight)
+    f_daily_samples = idata.posterior['f_daily_stored'].values  # (chain, draw, N_weight)
+
+    # Map fitness to weight observation times via day_idx
+    day_idx = stan_data['day_idx']  # length N_weight, values 1..D
+    D = fitness_samples.shape[2]
+    N_weight = len(day_idx)
+
+    # Validate dimensions
+    if fitness_samples.shape[2] != D:
+        raise ValueError(f"fitness_samples.shape[2] ({fitness_samples.shape[2]}) != D ({D})")
+    if f_gp_samples.shape[2] != N_weight:
+        raise ValueError(f"f_gp_samples.shape[2] ({f_gp_samples.shape[2]}) != N_weight ({N_weight})")
+    if f_daily_samples.shape[2] != N_weight:
+        raise ValueError(f"f_daily_samples.shape[2] ({f_daily_samples.shape[2]}) != N_weight ({N_weight})")
+    if day_idx.max() > D:
+        raise ValueError(f"day_idx max ({day_idx.max()}) > D ({D})")
+    if day_idx.min() < 1:
+        raise ValueError(f"day_idx min ({day_idx.min()}) < 1")
+
+    # Compute fitness effect at weight observation times
+    fitness_effect_samples = np.zeros_like(f_gp_samples)
+    for chain in range(fitness_samples.shape[0]):
+        for draw in range(fitness_samples.shape[1]):
+            fitness_effect_samples[chain, draw, :] = gamma_samples[chain, draw] * fitness_samples[chain, draw, day_idx - 1]
+
+    # Total prediction = fitness_effect + f_gp + f_daily
+    total_samples = fitness_effect_samples + f_gp_samples + f_daily_samples
+
+    # Back-transform functions
+    def back_transform_component(samples):
+        mean = samples.mean(axis=(0, 1)) * y_sd
+        lower = np.percentile(samples, 2.5, axis=(0, 1)) * y_sd
+        upper = np.percentile(samples, 97.5, axis=(0, 1)) * y_sd
+        return mean, lower, upper
+
+    def back_transform_total(samples):
+        mean = samples.mean(axis=(0, 1)) * y_sd + y_mean
+        lower = np.percentile(samples, 2.5, axis=(0, 1)) * y_sd + y_mean
+        upper = np.percentile(samples, 97.5, axis=(0, 1)) * y_sd + y_mean
+        return mean, lower, upper
+
+    # Compute means and credible intervals for each component
+    fitness_mean_bt, fitness_lower, fitness_upper = back_transform_component(fitness_effect_samples)
+    gp_mean_bt, gp_lower, gp_upper = back_transform_component(f_gp_samples)
+    daily_mean_bt, daily_lower, daily_upper = back_transform_component(f_daily_samples)
+    total_mean, total_lower, total_upper = back_transform_total(total_samples)
+
+    # Get observation residuals (observed - predicted)
+    obs_weight = df_weight['weight_lbs'].values
+    residuals = obs_weight - total_mean
+
+    timestamps = df_weight['timestamp']
+
+    # --- Panel 1: Fitness effect over time ---
+    ax_fitness.plot(timestamps, fitness_mean_bt, 'r-', linewidth=2, label='Fitness effect')
+    if show_ci:
+        ax_fitness.fill_between(timestamps, fitness_lower, fitness_upper, alpha=0.3, color='red', label='95% CI')
+    ax_fitness.set_xlabel('Date')
+    ax_fitness.set_ylabel('Weight effect (lbs)')
+    ax_fitness.set_title('Fitness Effect (γ × fitness) Over Time')
+    ax_fitness.legend(loc='upper left')
+    ax_fitness.grid(True, alpha=0.3)
+
+    # --- Panel 2: GP trend component over time ---
+    ax_gp.plot(timestamps, gp_mean_bt, 'g-', linewidth=2, label='GP trend')
+    if show_ci:
+        ax_gp.fill_between(timestamps, gp_lower, gp_upper, alpha=0.3, color='green', label='95% CI')
+    ax_gp.set_xlabel('Date')
+    ax_gp.set_ylabel('Weight (lbs)')
+    ax_gp.set_title('GP Trend Component Over Time')
+    ax_gp.legend(loc='upper left')
+    ax_gp.grid(True, alpha=0.3)
+
+    # --- Panel 3: Daily spline component over time ---
+    ax_daily.plot(timestamps, daily_mean_bt, 'b-', linewidth=2, label='Daily spline')
+    if show_ci:
+        ax_daily.fill_between(timestamps, daily_lower, daily_upper, alpha=0.3, color='blue', label='95% CI')
+    ax_daily.set_xlabel('Date')
+    ax_daily.set_ylabel('Weight deviation (lbs)')
+    ax_daily.set_title('Daily Spline Component Over Time')
+    ax_daily.legend(loc='upper left')
+    ax_daily.grid(True, alpha=0.3)
+
+    # --- Panel 4: Residuals over time ---
+    ax_residuals.scatter(timestamps, residuals, alpha=0.5, s=10, color='purple', label='Residuals')
+    ax_residuals.axhline(y=0, color='gray', linestyle='--', alpha=0.5, label='Zero line')
+    ax_residuals.set_xlabel('Date')
+    ax_residuals.set_ylabel('Weight residual (lbs)')
+    ax_residuals.set_title('Residuals (Observed - Predicted) Over Time')
+    ax_residuals.legend(loc='upper left')
+    ax_residuals.grid(True, alpha=0.3)
+
+    # Add overall title
+    fig.suptitle(f'State-Space Model Component Details: {model_name}', fontsize=16, y=1.02)
+
+    # Adjust layout
+    plt.tight_layout()
+
+    if output_path:
+        plt.savefig(output_path, dpi=150, bbox_inches='tight')
+        print(f'Saved state-space component details plot to {output_path}')
 
     return fig
 
