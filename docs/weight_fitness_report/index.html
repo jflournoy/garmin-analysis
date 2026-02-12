@@ -208,6 +208,18 @@
             background: var(--primary-color);
         }
 
+        .notice-box {
+            background: #fff3cd;
+            border-left: 4px solid #ffc107;
+            border-radius: 4px;
+            padding: 1rem;
+            margin: 1rem 0 2rem 0;
+            color: #856404;
+        }
+        .notice-box strong {
+            color: #856404;
+        }
+
         @media (max-width: 768px) {
             body {
                 padding: 10px;
@@ -230,6 +242,10 @@
         <div class="date">Generated: 2026-02-11 | Analysis Period: 2024-2026</div>
     </header>
 
+    <div class="notice-box">
+        <strong>🚧 Playground Work-in-Progress Notice:</strong> This analysis represents an <strong>experimental playground</strong> for Bayesian modeling of personal health data. The models, visualizations, and conclusions are actively evolving and should be considered exploratory research rather than definitive analysis.
+    </div>
+
     <div class="nav-links">
         <a href="#overview">Overview</a>
         <a href="#models">Model Descriptions</a>
@@ -240,16 +256,12 @@
 
     <section id="overview" class="section">
         <h2>Project Overview</h2>
-        <p>This report presents a comprehensive Bayesian analysis of the relationship between workout intensity (fitness) and weight measurements using personal Garmin health data. The analysis employs two complementary modeling approaches:</p>
+        <p>This report presents a comprehensive Bayesian analysis of the relationship between workout intensity (fitness) and weight measurements using personal Garmin health data. The analysis employs state-space modeling to track latent fitness state evolution from workouts to weight.</p>
 
         <div class="grid">
             <div class="card">
                 <h4>State-Space Models</h4>
                 <p>Track latent fitness state evolution from workouts to weight through a hidden dynamical system.</p>
-            </div>
-            <div class="card">
-                <h4>Cross-Lagged GP Models</h4>
-                <p>Direct modeling of lagged effects where workouts at time <em>t-τ</em> affect weight at time <em>t</em>.</p>
             </div>
         </div>
 
@@ -317,29 +329,6 @@
             <p><strong>Intensity Calculation:</strong> Workout intensity is computed as duration × (avg_hr - resting_hr) / (max_hr - resting_hr) to capture physiological effort.</p>
         </div>
 
-        <div class="model-card">
-            <h3>2. Cross-Lagged Gaussian Process Models</h3>
-            <p><strong>Core Idea:</strong> Weight depends directly on lagged workout intensity with separate Gaussian Processes for weight intrinsic dynamics and workout processes.</p>
-
-            <div class="equation">
-                <strong>Model Structure:</strong><br>
-                y<sub>weight</sub>(t) = f<sub>weight</sub>(t) + ε<sub>weight</sub><br>
-                y<sub>workout</sub>(t) = f<sub>workout</sub>(t) + ε<sub>workout</sub><br>
-                f<sub>weight</sub>(t) = β·f<sub>workout</sub>(t-τ) + g<sub>weight</sub>(t)<br>
-                g<sub>weight</sub>(t) ~ GP(0, k<sub>weight</sub>(t,t′))<br>
-                f<sub>workout</sub>(t) ~ GP(0, k<sub>workout</sub>(t,t′))<br>
-                ε<sub>i</sub> ~ Student-t(ν<sub>i</sub>, σ<sub>i</sub>)
-            </div>
-
-            <p><strong>Model Variants:</strong></p>
-            <ul>
-                <li><strong>Fixed Lag:</strong> τ specified as data parameter (0, 1, 2, 3, 7 days)</li>
-                <li><strong>Estimated Lag:</strong> τ estimated as parameter with exponential prior</li>
-                <li><strong>Cumulative Lag:</strong> Average effect over window of lag values</li>
-            </ul>
-
-            <p><strong>Robust Likelihood:</strong> Student-t distributions for observation noise provide robustness to outliers.</p>
-        </div>
 
     </section>
 
@@ -359,93 +348,35 @@
                 </tr>
                 <tr>
                     <td>α (fitness persistence)</td>
-                    <td>0.741</td>
-                    <td>[0.498, 0.944]</td>
+                    <td>0.747</td>
+                    <td>[0.482, 0.942]</td>
                     <td>High fitness persistence day-to-day</td>
                 </tr>
                 <tr>
                     <td>ψ (impulse decay)</td>
-                    <td>0.639</td>
-                    <td>[0.314, 0.902]</td>
-                    <td>Moderate impulse persistence (~82% probability ψ > 0.5)</td>
+                    <td>0.645</td>
+                    <td>[0.318, 0.910]</td>
+                    <td>Impulse persistence with ~82% probability ψ > 0.5</td>
                 </tr>
                 <tr>
                     <td>β (fitness gain per impulse)</td>
-                    <td>0.078</td>
-                    <td>[-0.020, 0.371]</td>
-                    <td>Weak evidence workouts increase fitness (~76% probability β > 0)</td>
+                    <td>0.079</td>
+                    <td>[-0.021, 0.432]</td>
+                    <td>Workouts increase fitness with ~89% probability β > 0</td>
                 </tr>
                 <tr>
                     <td>γ (weight effect per fitness)</td>
-                    <td>-0.355</td>
-                    <td>[-0.801, -0.003]</td>
-                    <td><strong>Strong evidence fitness reduces weight</strong> (CI excludes 0)</td>
+                    <td>-0.340</td>
+                    <td>[-0.801, -0.002]</td>
+                    <td>Fitness reduces weight with 97.7% probability γ < 0</td>
                 </tr>
             </table>
 
-            <p><strong>Probability γ &lt; 0:</strong> >99.9% | <strong>Probability β &gt; 0:</strong> ~76% | <strong>Probability ψ &gt; 0.5:</strong> ~82%</p>
-            <p><strong>Conclusion:</strong> The enhanced spline state-space model shows <strong>strong evidence that fitness reduces weight</strong> but only weak evidence that workouts increase fitness. The model captures daily weight patterns accounting for 3.2% of total variance with a daily amplitude of 0.59 standardized units.</p>
+            <p><strong>Probability γ &lt; 0:</strong> 97.7% | <strong>Probability β &gt; 0:</strong> 88.9% | <strong>Probability ψ &gt; 0.5:</strong> 81.8%</p>
+            <p><strong>Conclusion:</strong> The enhanced spline state-space model indicates fitness reduces weight with 97.7% probability (γ = -0.340) but workouts increase fitness with 88.9% probability (β = 0.079). The model captures daily weight patterns accounting for 3.0% of total variance with a daily amplitude of 0.57 standardized units.</p>
         </div>
 
-        <div class="finding">
-            <h3>Cross-Lagged Model Comparison</h3>
-            <p>Analysis of three workout types (strength training, walking, cycling) across multiple lag models:</p>
 
-            <table class="parameter-table">
-                <tr>
-                    <th>Workout Type</th>
-                    <th>Models Compared</th>
-                    <th>Average β</th>
-                    <th>β &gt; 0</th>
-                    <th>β &lt; 0</th>
-                    <th>Best Model</th>
-                </tr>
-                <tr>
-                    <td>Strength Training</td>
-                    <td>7</td>
-                    <td>-0.111</td>
-                    <td>1</td>
-                    <td>6</td>
-                    <td>Fixed lag (varied)</td>
-                </tr>
-                <tr>
-                    <td>Walking</td>
-                    <td>7</td>
-                    <td>-0.164</td>
-                    <td>1</td>
-                    <td>6</td>
-                    <td>Fixed lag (varied)</td>
-                </tr>
-                <tr>
-                    <td>Cycling</td>
-                    <td>7</td>
-                    <td>-0.197</td>
-                    <td>1</td>
-                    <td>6</td>
-                    <td>Fixed lag (varied)</td>
-                </tr>
-            </table>
-
-            <p><strong>Key Insight:</strong> The improved impulse-response state-space model shows positive β values (workouts → fitness) and strongly negative γ values (fitness → weight reduction), providing clearer evidence of the workout-fitness-weight pathway.</p>
-        </div>
-
-        <div class="finding">
-            <h3>Health-Workout Correlation Analysis</h3>
-            <p>Comprehensive analysis of 87 health-workout relationships revealed:</p>
-            <ul>
-                <li><strong>63.2% significant relationships</strong> (55 out of 87)</li>
-                <li><strong>Strongest positive effect:</strong> Cycling → Total Distance (r = 0.448, p &lt; 1e-46)</li>
-                <li><strong>Strongest negative effect:</strong> Cycling → Total Steps (r = -0.145, p &lt; 1e-5)</li>
-                <li><strong>Most common optimal lag:</strong> 0 days (27 relationships), suggesting immediate effects</li>
-            </ul>
-
-            <p><strong>Workout Impact by Category:</strong></p>
-            <ul>
-                <li><strong>Cycling:</strong> 20 significant effects (15 positive, 5 negative)</li>
-                <li><strong>Walking:</strong> 16 significant effects (11 positive, 5 negative)</li>
-                <li><strong>Strength Training:</strong> 19 significant effects (10 positive, 9 negative)</li>
-            </ul>
-        </div>
     </section>
 
     <section id="visualizations" class="section">
@@ -478,7 +409,19 @@
         <div class="visualization">
             <h3>Spline Decomposition: Weight Components in Enhanced Model</h3>
             <img src="visualizations/spline_decomposition.png" alt="Spline decomposition of weight into components">
-            <div class="caption">Four-panel decomposition from enhanced spline state-space model showing weight broken down into: (top-left) overall fit with 95% credible intervals, (top-right) Gaussian process smooth component capturing slow trends, (bottom-left) fitness component showing effect of latent fitness state, (bottom-right) daily cyclic pattern capturing within-day variations. Daily component accounts for 3.2% of total variance.</div>
+            <div class="caption">Four-panel decomposition from enhanced spline state-space model showing weight broken down into: (top-left) overall fit with 95% credible intervals, (top-right) Gaussian process smooth component capturing slow trends, (bottom-left) fitness component showing contribution of latent fitness state, (bottom-right) daily cyclic pattern capturing within-day variations (with detrended observations shown as red dots). Daily component accounts for 3.0% of total variance.</div>
+        </div>
+
+        <div class="visualization">
+            <h3>Component Details: Fitness, GP Trend, Daily Spline, and Residuals</h3>
+            <img src="visualizations/component_details.png" alt="Component details for state-space model">
+            <div class="caption">Detailed component-by-component views from enhanced state-space spline model showing: (top-left) fitness component over time (γ × fitness), (top-right) GP trend component over time, (bottom-left) daily spline component over time, (bottom-right) residuals (observed - predicted) over time. Each component shown with 95% credible intervals where applicable.</div>
+        </div>
+
+        <div class="visualization">
+            <h3>Spline Daily Pattern with Detrended Data</h3>
+            <img src="visualizations/spline_daily_pattern.png" alt="Spline daily pattern with detrended data">
+            <div class="caption">Daily pattern visualization showing the Fourier spline estimate (red line) with 95% credible interval (shaded) and detrended data residuals (blue dots). Detrended data computed as weight observations minus fitness component minus GP trend, showing how well the daily pattern captures within-day weight variations.</div>
         </div>
 
         <div class="visualization">
@@ -487,29 +430,6 @@
             <div class="caption">Trace plots showing MCMC sampling for key parameters (α, ψ, β, γ, σ_f, σ_w) across 4 chains. Left panels show trace plots, right panels show rank histograms. All chains mix well with no apparent divergences, indicating good convergence.</div>
         </div>
 
-        <div class="visualization">
-            <h3>Cross-Lagged Effect Sizes by Workout Type</h3>
-            <img src="visualizations/effect_sizes_comparison.png" alt="Effect sizes comparison across workout types">
-            <div class="caption">Comparison of β effect sizes (workout → weight) across different workout types and modeling approaches. Negative values indicate workouts associated with weight loss.</div>
-        </div>
-
-        <div class="visualization">
-            <h3>Lag-Effect Relationship</h3>
-            <img src="visualizations/lag_effect_relationship.png" alt="Lag effect relationship">
-            <div class="caption">Relationship between lag time (days) and effect size β. Effects tend to be strongest at shorter lags (0-2 days) and diminish with longer delays.</div>
-        </div>
-
-        <div class="visualization">
-            <h3>Credible Interval Widths by Model Type</h3>
-            <img src="visualizations/ci_widths_comparison.png" alt="Credible interval widths comparison">
-            <div class="caption">Comparison of credible interval widths across different modeling approaches. Fixed lag models generally provide more precise estimates than cumulative lag models.</div>
-        </div>
-
-        <div class="visualization">
-            <h3>Beta vs Lag for All Workout Types</h3>
-            <img src="visualizations/beta_vs_lag_all_variables.png" alt="Beta vs lag for all variables">
-            <div class="caption">Effect size β across different lag values for strength training, walking, and cycling. Most effects are negative, suggesting workouts are associated with weight loss rather than gain.</div>
-        </div>
     </section>
 
     <section id="interpretation" class="section">
@@ -517,23 +437,13 @@
 
         <div class="interpretation">
             <h3>Key Insights</h3>
-            <p><strong>1. Workouts Generally Associated with Weight Loss:</strong> Across most models and workout types, the estimated effect (β) is negative, suggesting workouts are more likely associated with fat loss than muscle gain in this dataset.</p>
+            <p><strong>1. Workouts Generally Associated with Weight Loss:</strong> Across most models and workout types, the parameter estimate for β is negative, suggesting workouts are more likely associated with fat loss than muscle gain in this dataset.</p>
 
-            <p><strong>2. Immediate to Short-Term Effects:</strong> Optimal lags cluster around 0-2 days, suggesting workout effects on weight manifest quickly rather than accumulating over weeks.</p>
 
-            <p><strong>3. State-Space Model Improvements:</strong> The enhanced spline state-space model shows strong evidence that fitness reduces weight (γ = -0.355, CI excludes 0) but only weak evidence that workouts increase fitness (β = 0.078, ~76% probability > 0). Daily cyclic patterns account for 3.2% of total variance.</p>
+            <p><strong>2. State-Space Model Improvements:</strong> The enhanced spline state-space model indicates fitness reduces weight with 97.7% probability (γ = -0.340) but workouts increase fitness with 88.9% probability (β = 0.079). Daily cyclic patterns account for 3.0% of total variance.</p>
 
-            <p><strong>4. Metric Matters:</strong> Different workout metrics (calories, reps, duration) capture different aspects of training stimulus. Calories appear most reliable for cross-lagged modeling.</p>
         </div>
 
-        <div class="interpretation">
-            <h3>Model Comparison and Selection</h3>
-            <p><strong>For understanding cumulative fitness effects:</strong> State-space models provide a theoretical framework for how workouts build fitness that then affects weight.</p>
-
-            <p><strong>For detecting direct lagged effects:</strong> Cross-lagged GP models offer flexible approaches with different lag specifications.</p>
-
-            <p><strong>For precision vs flexibility trade-off:</strong> Fixed lag models provide more precise estimates, while estimated/cumulative lag models are more flexible but less precise.</p>
-        </div>
 
         <div class="interpretation">
             <h3>Limitations and Future Directions</h3>
@@ -542,7 +452,7 @@
                 <li><strong>Measurement error:</strong> Weight fluctuations from hydration, digestion, timing</li>
                 <li><strong>Individual variation:</strong> Responses to training vary widely between individuals</li>
                 <li><strong>Model complexity:</strong> More sophisticated models could incorporate nutrition, sleep, and stress data</li>
-                <li><strong>Longer time horizons:</strong> Effects may manifest over weeks/months beyond modeling window</li>
+                <li><strong>Longer time horizons:</strong> Associations may manifest over weeks/months beyond modeling window</li>
             </ul>
         </div>
     </section>
@@ -571,21 +481,54 @@
         <pre style="background: #f5f5f5; padding: 1rem; border-radius: 5px; overflow-x: auto;">
 garmin-analysis-v2/
 ├── stan/                    # Stan model files
-│   ├── weight_state_space.stan
-│   └── weight_gp_crosslagged_*.stan
+│   └── weight_state_space.stan
 ├── src/
 │   ├── models/fit_weight.py    # Model fitting with caching
 │   ├── analysis/analyze_state_space.py
-│   ├── analysis/compare_crosslagged_models.py
 │   └── data/                   # Data loading utilities
 └── output/                  # Analysis results and visualizations
         </pre>
     </section>
 
+    <section id="roadmap" class="section">
+        <h2>Future Roadmap: Model Enhancements</h2>
+
+        <p>This analysis is part of an ongoing experimental playground for Bayesian modeling of health data. Future model enhancements currently under consideration include:</p>
+
+        <div class="model-card">
+            <h3>1. Cumulative Effects from Fitness</h3>
+            <p>Extend the state-space model to incorporate cumulative fitness effects where fitness gains accumulate non-linearly over time, potentially with saturation effects or delayed returns.</p>
+        </div>
+
+        <div class="model-card">
+            <h3>2. Multiple Fitness Sources</h3>
+            <p>Incorporate different types of workouts as separate fitness sources, particularly distinguishing between:
+                <ul>
+                    <li><strong>High aerobic activity</strong> (running, cycling, cardio)</li>
+                    <li><strong>Strength training</strong> (weightlifting, resistance)</li>
+                    <li><strong>Low-intensity activity</strong> (walking, daily movement)</li>
+                </ul>
+            Each source could have distinct impulse accumulation rates (ψ), fitness conversion efficiencies (β), and weight effects (γ).
+            </p>
+        </div>
+
+        <div class="model-card">
+            <h3>3. Deterministic Fitness and Impulse Dynamics</h3>
+            <p>Explore more deterministic formulations of fitness and impulse dynamics, potentially replacing stochastic components with deterministic differential equations while maintaining Bayesian uncertainty quantification on parameters.</p>
+        </div>
+
+        <div class="model-card">
+            <h3>4. Nutritional and Lifestyle Covariates</h3>
+            <p>Integrate nutrition data (caloric intake, macronutrients), sleep metrics, stress indicators, and other lifestyle factors as covariates affecting both fitness accumulation and weight dynamics.</p>
+        </div>
+
+        <p><strong>Note:</strong> These enhancements represent exploratory research directions rather than planned production features. The playground nature of this project allows for rapid iteration and experimentation with different modeling approaches.</p>
+    </section>
+
     <footer>
         <p><strong>Weight-Fitness Model Analysis Report</strong></p>
         <p>Generated using Bayesian methods with Garmin health data | Analysis period: 2024-2026</p>
-        <p>Model implementations: Stan state-space and Gaussian Process models | Visualization: Matplotlib/Seaborn</p>
+        <p>Model implementations: Stan state-space models | Visualization: Matplotlib/Seaborn</p>
         <p>Report generated: 2026-02-11 | Project: garmin-analysis-v2</p>
     </footer>
 </body>
