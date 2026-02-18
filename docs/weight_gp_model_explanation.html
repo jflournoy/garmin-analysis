@@ -23,6 +23,9 @@
     <!-- Load MathJax -->
     <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" async></script>
 
+    <!-- Simple Analytics -->
+    <script async src="https://scripts.simpleanalyticscdn.com/latest.js"></script>
+
     <!-- Basic styling -->
     <style>
         body {
@@ -91,24 +94,10 @@
             color: #7f8c8d;
             font-size: 0.9em;
         }
-        .notice-box {
-            background: #fff3cd;
-            border-left: 4px solid #ffc107;
-            border-radius: 4px;
-            padding: 1rem;
-            margin: 1rem 0 2rem 0;
-            color: #856404;
-        }
-        .notice-box strong {
-            color: #856404;
-        }
     </style>
 </head>
 <body>
     <h1>Bayesian Gaussian Process Model for Weight Analysis</h1>
-    <div class="notice-box">
-        <strong>🚧 Playground Work-in-Progress Notice:</strong> This technical documentation describes models that are part of an <strong>experimental playground</strong> for Bayesian analysis of personal health data. The implementations and analyses are actively evolving and should be considered exploratory research.
-    </div>
 <h2>Overview</h2>
 <p>This document explains the Bayesian Gaussian Process (GP) model used for analyzing weight trends from Garmin health data. The model is implemented in Stan and provides a flexible framework for capturing temporal patterns while quantifying uncertainty.</p>
 <h2>1. Data Preparation</h2>

@@ -81,6 +81,9 @@ def convert_markdown_to_html(md_path: Path, html_path: Path = None):
     <!-- Load MathJax -->
     <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" async></script>
 
+    <!-- Simple Analytics -->
+    <script async src="https://scripts.simpleanalyticscdn.com/latest.js"></script>
+
     <!-- Basic styling -->
     <style>
         body {{

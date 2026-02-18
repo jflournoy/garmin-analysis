@@ -114,3 +114,17 @@ garmin-analysis-v2/
 - ALWAYS use atomic commits
 - Use emojis judiciously
 - NEVER Edit() a file before you Read() the file
+
+## Analytics Tracking
+
+**CRITICAL:** All HTML pages MUST include Simple Analytics tracking.
+
+The tracking script is configured in `docs/convert_to_html.py` HTML template:
+```html
+<script async src="https://scripts.simpleanalyticscdn.com/latest.js"></script>
+```
+
+**When generating or modifying HTML:**
+- Always ensure this script is present in the `<head>` section of the template
+- Run `npm run generate-docs` to rebuild all HTML files
+- Verify tracking is present: `grep -r "simpleanalyticscdn" docs/`
