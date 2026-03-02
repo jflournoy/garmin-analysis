@@ -1,0 +1,370 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Four-Fitness State-Space Model: Technical Walkthrough</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f8f9fa;
+            color: #333;
+            padding-top: 20px;
+            padding-bottom: 40px;
+        }
+        .header {
+            background: linear-gradient(135deg, #2c3e50, #3498db);
+            color: white;
+            padding: 3rem 0;
+            margin-bottom: 2rem;
+            border-radius: 0 0 20px 20px;
+        }
+        .section {
+            background: white;
+            padding: 2rem;
+            margin-bottom: 2rem;
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        .equation-box {
+            background: #f8f9fa;
+            border-left: 4px solid #3498db;
+            padding: 1.5rem;
+            margin: 1.5rem 0;
+            border-radius: 5px;
+            font-family: 'Cambria', 'Times New Roman', serif;
+        }
+        .parameter-table {
+            font-size: 0.85rem;
+        }
+        .parameter-table th {
+            background-color: #f8f9fa;
+        }
+        .mermaid {
+            background: white;
+            padding: 1.5rem;
+            border-radius: 5px;
+            border: 1px solid #dee2e6;
+            margin: 1.5rem 0;
+        }
+        h2 {
+            color: #2c3e50;
+            border-bottom: 2px solid #3498db;
+            padding-bottom: 10px;
+            margin-bottom: 20px;
+        }
+        h3 {
+            color: #34495e;
+            margin-top: 1.5rem;
+        }
+    </style>
+    <!-- Simple Analytics -->
+    <script async src="https://scripts.simpleanalyticscdn.com/latest.js"></script>
+</head>
+<body>
+    <div class="container">
+        <div class="header text-center">
+            <h1 class="display-4">Four-Fitness Model Technical Documentation</h1>
+            <p class="lead">Complete Mathematical and Implementation Details</p>
+            <p class="mb-0">Generated: 2026-02-28 | Technical reference for developers and researchers</p>
+        </div>
+        <!-- Table of Contents -->
+        <div class="section">
+            <h2>📋 Table of Contents</h2>
+            <ol>
+                <li><a href="#parameter-estimates">Parameter Estimates</a></li>
+                <li><a href="#mathematical-foundations">Mathematical Foundations</a></li>
+                <li><a href="#process-interactions">Process Interactions</a></li>
+                <li><a href="#posterior-predictions">Posterior Predictions</a></li>
+            </ol>
+        </div>
+        <!-- Parameter Estimates -->
+        <div class="section" id="parameter-estimates">
+            <h2>1. Parameter Estimates</h2>
+            <p>Posterior means and 95% highest density intervals from MCMC sampling:</p>
+            <table class="table table-striped parameter-table">
+    <thead>
+        <tr>
+            <th>Parameter</th>
+            <th>Mean</th>
+            <th>Std</th>
+            <th>HDI 2.5%</th>
+            <th>HDI 97.5%</th>
+        </tr>
+    </thead>
+    <tbody>
+        <tr>
+            <td><code>psi_a_short</code></td>
+            <td>0.373</td>
+            <td>0.153</td>
+            <td>0.081</td>
+            <td>0.637</td>
+        </tr>
+        <tr>
+            <td><code>psi_s_short</code></td>
+            <td>0.346</td>
+            <td>0.151</td>
+            <td>0.084</td>
+            <td>0.638</td>
+        </tr>
+        <tr>
+            <td><code>psi_a_long</code></td>
+            <td>0.663</td>
+            <td>0.150</td>
+            <td>0.397</td>
+            <td>0.933</td>
+        </tr>
+        <tr>
+            <td><code>psi_s_long</code></td>
+            <td>0.661</td>
+            <td>0.170</td>
+            <td>0.372</td>
+            <td>0.997</td>
+        </tr>
+        <tr>
+            <td><code>alpha_a_short</code></td>
+            <td>0.500</td>
+            <td>0.166</td>
+            <td>0.167</td>
+            <td>0.768</td>
+        </tr>
+        <tr>
+            <td><code>alpha_s_short</code></td>
+            <td>0.488</td>
+            <td>0.166</td>
+            <td>0.163</td>
+            <td>0.777</td>
+        </tr>
+        <tr>
+            <td><code>alpha_a_long</code></td>
+            <td>0.769</td>
+            <td>0.119</td>
+            <td>0.553</td>
+            <td>0.972</td>
+        </tr>
+        <tr>
+            <td><code>alpha_s_long</code></td>
+            <td>0.913</td>
+            <td>0.100</td>
+            <td>0.718</td>
+            <td>1.000</td>
+        </tr>
+        <tr>
+            <td><code>beta_a_short</code></td>
+            <td>0.092</td>
+            <td>0.120</td>
+            <td>-0.102</td>
+            <td>0.366</td>
+        </tr>
+        <tr>
+            <td><code>beta_s_short</code></td>
+            <td>0.113</td>
+            <td>0.131</td>
+            <td>-0.136</td>
+            <td>0.345</td>
+        </tr>
+        <tr>
+            <td><code>beta_a_long</code></td>
+            <td>0.065</td>
+            <td>0.070</td>
+            <td>-0.060</td>
+            <td>0.203</td>
+        </tr>
+        <tr>
+            <td><code>beta_s_long</code></td>
+            <td>0.032</td>
+            <td>0.057</td>
+            <td>-0.065</td>
+            <td>0.160</td>
+        </tr>
+        <tr>
+            <td><code>gamma_a_short</code></td>
+            <td>-0.211</td>
+            <td>0.153</td>
+            <td>-0.528</td>
+            <td>0.028</td>
+        </tr>
+        <tr>
+            <td><code>gamma_s_short</code></td>
+            <td>0.106</td>
+            <td>0.135</td>
+            <td>-0.107</td>
+            <td>0.395</td>
+        </tr>
+        <tr>
+            <td><code>gamma_a_long</code></td>
+            <td>-0.159</td>
+            <td>0.095</td>
+            <td>-0.321</td>
+            <td>0.014</td>
+        </tr>
+        <tr>
+            <td><code>gamma_s_long</code></td>
+            <td>0.194</td>
+            <td>0.150</td>
+            <td>-0.013</td>
+            <td>0.501</td>
+        </tr>
+        <tr>
+            <td><code>sigma_w</code></td>
+            <td>0.359</td>
+            <td>0.022</td>
+            <td>0.318</td>
+            <td>0.403</td>
+        </tr>
+        <tr>
+            <td><code>alpha_gp</code></td>
+            <td>0.801</td>
+            <td>0.238</td>
+            <td>0.381</td>
+            <td>1.266</td>
+        </tr>
+        <tr>
+            <td><code>rho_gp</code></td>
+            <td>0.164</td>
+            <td>0.034</td>
+            <td>0.096</td>
+            <td>0.226</td>
+        </tr>
+    </tbody>
+</table>
+        </div>
+<div class="section" id="mathematical-foundations">
+    <h2>1. Mathematical Foundations</h2>
+    <h3>1.1 Complete State-Space System</h3>
+    <div class="equation-box">
+        \[
+        \begin{align*}
+        \text{Impulse dynamics:} & \\
+        I_i[t] &= \psi_i I_i[t-1] + X_i[t] \\
+        \\
+        \text{Fitness dynamics:} & \\
+        F_i[t] &= \alpha_i F_i[t-1] + \beta_i I_i[t-1] \\
+        \\
+        \text{Observation equation:} & \\
+        W[t] &= \sum_{i} \gamma_i F_i[t] + \text{GP}(t) + f_{\text{daily}}(t) + \epsilon_w[t]
+        \end{align*}
+        \]
+        for $i \in \{a\_short, s\_short, a\_long, s\_long\}$.
+    </div>
+    <h3>1.2 Key Mathematical Properties</h3>
+    <div class="equation-box">
+        <strong>Impulse accumulation:</strong>
+        \[
+        I_i[t] = \sum_{k=0}^{t} \psi_i^k X_i[t-k]
+        \]
+        Shows exponential decay of past intensities.
+    </div>
+    <div class="equation-box">
+        <strong>Fitness accumulation:</strong>
+        \[
+        F_i[t] = \sum_{k=1}^{t} \alpha_i^{k-1} \beta_i I_i[t-k]
+        \]
+        Shows how impulses translate to fitness.
+    </div>
+    <div class="equation-box">
+        <strong>Complete weight prediction:</strong>
+        \[
+        \hat{W}[t] = \sum_{i} \gamma_i \sum_{k=1}^{t} \alpha_i^{k-1} \beta_i \sum_{j=0}^{t-k} \psi_i^j X_i[t-k-j]
+        \]
+        Shows the full cascade from activity to weight.
+    </div>
+</div>
+<div class="section" id="process-interactions">
+    <h2>2. Process Interactions</h2>
+    <h3>2.1 System Diagram</h3>
+    <div class="mermaid">
+    graph TD
+        A[Aerobic Intensity] --> B[Impulse: ψ_a_short]
+        A --> C[Impulse: ψ_a_long]
+        B --> D[Fitness: α_a_short, β_a_short]
+        C --> E[Fitness: α_a_long, β_a_long]
+        
+        F[Strength Intensity] --> G[Impulse: ψ_s_short]
+        F --> H[Impulse: ψ_s_long]
+        G --> I[Fitness: α_s_short, β_s_short]
+        H --> J[Fitness: α_s_long, β_s_long]
+        
+        D --> K[Weight: γ_a_short]
+        E --> L[Weight: γ_a_long]
+        I --> M[Weight: γ_s_short]
+        J --> N[Weight: γ_s_long]
+        
+        K --> O[Σ Weight Effects]
+        L --> O
+        M --> O
+        N --> O
+        
+        P[GP Trend] --> O
+        Q[Daily Cycle] --> O
+        O --> R[Observed Weight]
+        S[Observation Noise] --> R
+    </div>
+    <h3>2.2 Time Scale Separation</h3>
+    <div class="equation-box">
+        <strong>Short-term half-life:</strong>
+        \[
+        t_{1/2}^{\text{short}} = -\frac{\log(2)}{\log(\psi_{\text{short}})}
+        \]
+        Typically hours to days.
+    </div>
+    <div class="equation-box">
+        <strong>Long-term half-life:</strong>
+        \[
+        t_{1/2}^{\text{long}} = -\frac{\log(2)}{\log(\alpha_{\text{long}} \psi_{\text{long}})}
+        \]
+        Typically weeks to months.
+    </div>
+</div>
+<div class="section" id="posterior-predictions">
+    <h2>3. Posterior Predictions</h2>
+    <h3>3.1 Single Workout Response</h3>
+    <div class="equation-box">
+        \[
+        \Delta W[t] = \gamma \beta \alpha^{t} \psi^{t} X[0]
+        \]
+        Weight change at time $t$ from single workout at time 0.
+    </div>
+    <h3>3.2 Multiple Workout Superposition</h3>
+    <div class="equation-box">
+        \[
+        \Delta W[t] = \sum_{s=0}^{t} \gamma \beta \alpha^{t-s} \psi^{t-s} X[s]
+        \]
+        Linear superposition of workouts at different times.
+    </div>
+    <h3>3.3 Uncertainty Propagation</h3>
+    <div class="equation-box">
+        \[
+        \text{Var}(\hat{W}[t]) = \sum_{i} \gamma_i^2 \text{Var}(F_i[t]) + \text{Var}(\text{GP}(t)) + \text{Var}(f_{\text{daily}}(t)) + \sigma_w^2
+        \]
+        Shows how parameter uncertainty affects prediction uncertainty.
+    </div>
+</div>
+        <!-- Footer -->
+        <div class="section text-center text-muted">
+            <hr>
+            <p>Four-Fitness State-Space Model Technical Walkthrough</p>
+            <p>Generated on 2026-02-27 15:00:55 | Model: weight_state_space_four_fitness.stan</p>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/mermaid@10.6.1/dist/mermaid.min.js"></script>
+    <script>mermaid.initialize({startOnLoad: true});</script>
+
+    <script>
+        // Initialize MathJax
+        MathJax = {
+            tex: {
+                inlineMath: [['$', '$'], ['\\(', '\\)']],
+                displayMath: [['$$', '$$'], ['\\[', '\\]']]
+            },
+            svg: {
+                fontCache: 'global'
+            }
+        };
+    </script>
+</body>
+</html>
