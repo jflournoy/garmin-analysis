@@ -98,7 +98,7 @@
     </header>
 
 <div class="notice-box">
-            <strong>🎯 Enhanced Sensitivity Model Now Primary:</strong> All documentation has been updated to feature the enhanced sensitivity model with conservative sampling (adapt_delta=0.99, max_treedepth=12). This model provides reliable inference with proper uncertainty quantification and smooth continuous predictions.
+            <strong>🎯 Current Model: Constrained AR(1) Spline with Student-t Likelihood</strong> | Stan: <code>weight_state_space_training_decay_aerobic_symmetric_student_ar_spline_constrained.stan</code> | Key feature: AR coefficient ρ constrained to [-0.5, 0.5] to prevent overfitting. Detailed component predictions in component_predictions/ directory.
         </div>
 
     <div class="notice-box">
@@ -107,39 +107,39 @@
 
     <div class="doc-list">
         <div class="doc-card">
+            <h3>⭐ Current Model Output</h3>
+            <p><strong>Component Predictions:</strong> Output from the constrained AR(1) spline model. Includes hourly predictions, component breakdown by activity type, and daily patterns in weight variation.</p>
+            <a href="component_predictions/prediction_summary.md">View Component Predictions →</a>
+        </div>
+
+        <div class="doc-card">
             <h3>🌟 Enhanced Model Suite (Master Index)</h3>
-            <p><strong>Complete Analysis Suite:</strong> Central hub for all enhanced sensitivity model reports with conservative sampling (adapt_delta=0.99). Includes comprehensive visualizations, time series analysis, and detailed reports.</p>
+            <p><strong>Complete Analysis Suite:</strong> Central hub for enhanced sensitivity model reports with conservative sampling (adapt_delta=0.99). Includes comprehensive visualizations, time series analysis, and detailed reports. [Previous Model]</p>
             <a href="enhanced_model_suite/index.html">View Complete Suite →</a>
         </div>
 
         <div class="doc-card">
-            <h3>📊 Enhanced Sensitivity Report</h3>
-            <p>Detailed analysis of enhanced sensitivity model with parameter estimates, variance decomposition, convergence diagnostics, and model recommendations.</p>
-            <a href="enhanced_sensitivity_report/index.html">View Comprehensive Report →</a>
+            <h3>📊 Enhanced Sensitivity Report [Archive]</h3>
+            <p>Detailed analysis of enhanced sensitivity model with parameter estimates, variance decomposition, convergence diagnostics, and model recommendations. (Previous model variant)</p>
+            <a href="enhanced_sensitivity_report/index.html">View Archive Report →</a>
         </div>
 
         <div class="doc-card">
-            <h3>📈 Enhanced Model Visualizations</h3>
-            <p>Comprehensive visualizations including component time series, convergence diagnostics, parameter distributions, and fitness state evolution.</p>
-            <a href="enhanced_model_visualizations/index.html">View Visualizations →</a>
+            <h3>📈 Enhanced Model Visualizations [Archive]</h3>
+            <p>Comprehensive visualizations including component time series, convergence diagnostics, parameter distributions, and fitness state evolution. (Previous model variant)</p>
+            <a href="enhanced_model_visualizations/index.html">View Archive Visualizations →</a>
         </div>
 
         <div class="doc-card">
-            <h3>⏱️ Missing Visualizations</h3>
-            <p>Key time series and component analysis showing weight predictions, component breakdown, and fitness state evolution with activity overlay.</p>
-            <a href="missing_visualizations/index.html">View Time Series →</a>
+            <h3>🏃 Enhanced Fitness Time Series [Archive]</h3>
+            <p>Enhanced sensitivity model fitness time series with conservative sampling. Shows smooth predictions, component breakdown, and reliable uncertainty quantification from adapt_delta=0.99 sampling. (Previous model variant)</p>
+            <a href="enhanced_fitness_time_series_report/index.html">View Archive Analysis →</a>
         </div>
 
         <div class="doc-card">
-            <h3>🏃 Enhanced Fitness Time Series</h3>
-            <p>Enhanced sensitivity model fitness time series with conservative sampling. Shows smooth predictions, component breakdown, and reliable uncertainty quantification from adapt_delta=0.99 sampling.</p>
-            <a href="enhanced_fitness_time_series_report/index.html">View Fitness Analysis →</a>
-        </div>
-
-        <div class="doc-card">
-            <h3>🔬 Enhanced Model Overview</h3>
-            <p>Model overview with technical specifications, sampling configuration, and implementation details for the enhanced sensitivity model.</p>
-            <a href="enhanced_model/index.html">View Model Overview →</a>
+            <h3>🔬 Enhanced Model Overview [Archive]</h3>
+            <p>Model overview with technical specifications, sampling configuration, and implementation details for the enhanced sensitivity model. (Previous model variant)</p>
+            <a href="enhanced_model/index.html">View Archive Overview →</a>
         </div>
 
         <div class="doc-card">
