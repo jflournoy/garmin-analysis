@@ -1,0 +1,187 @@
+# Claude Current Status - Condensed
+
+## Archive Note
+- **Condensed on**: Thu Feb  5 02:23:12 PM PST 2026
+- **Original size**: 485 lines
+- **Archived**: 285 lines to .claude-archive/status-archive-2026-02-05_14-23-12.txt
+- **Kept**: 200 lines (recent work)
+- **Previous archive**: Lines 1-285
+
+## Recent Work (Last 200 lines)
+========================================
+
+1. Run full comparison with proper MCMC settings
+2. Analyze results across multiple workout variables
+3. Extend to other health metrics (sleep, HRV, etc.)
+4. Add hierarchical models for individual differences
+
+
+## Session Resume - 2026-02-04 16:41:27
+
+**Task**: Continue cross-lagged model analysis work
+
+**Accomplishments**:
+
+1. ✅ **Running comprehensive cross-lagged model comparison**:
+   - Variables: `strength_training`, `walking`, `cycling`
+   - MCMC settings: 4 chains, 500 warmup, 500 sampling
+   - Model types: Fixed lag (τ=0,1,2,3,7 days), Estimated lag, Cumulative lag
+   - First model completed: strength_training τ=0 days
+   - Results: β = 0.102 [-1.744, 1.957] (no significant effect)
+   - Estimated completion time: ~4.7 hours (13.5 min/model × 21 models)
+
+2. ✅ **Created health metrics loading module** (`src/data/health_metrics.py`):
+   - Loads sleep data from wellness export
+   - Loads daily health metrics from UDS files (stress, resting HR, Body Battery, respiration)
+   - Combines datasets with proper column naming
+   - Provides 33 health metrics across 922 days (2023-07-12 to 2026-01-20)
+
+3. ✅ **Created results analysis script** (`src/analysis/analyze_crosslagged_results.py`):
+   - Loads and analyzes cross-lagged model results
+   - Creates summary reports and visualizations
+   - Generates HTML reports with interactive elements
+
+4. ✅ **Fixed duplicate column issues** in health metrics merging
+
+**Available Health Metrics**:
+- **Sleep**: 10 metrics (duration, stages, efficiency, respiration during sleep)
+- **Stress**: Average/max stress, stress durations, intensity levels
+- **Heart**: Resting heart rate
+- **Activity**: Steps, calories, distance
+- **Respiration**: Daily and sleep respiration rates
+- **Body Battery**: Charged/drained values, highest/lowest
+
+**Next Steps**:
+1. Wait for cross-lagged analysis to complete (~4 hours remaining)
+2. Run analysis script on completed results
+3. Create cross-lagged analysis extension for health metrics
+4. Consider hierarchical models for individual differences
+
+**Files Created**:
+- [src/analysis/analyze_crosslagged_results.py](src/analysis/analyze_crosslagged_results.py): Results analysis script (470 lines)
+- [src/data/health_metrics.py](src/data/health_metrics.py): Health metrics loading module (470 lines)
+
+**Project Status**: **IN PROGRESS** - Comprehensive analysis running, health metrics infrastructure ready.
+
+## Model Run Status Check - 2026-02-04 20:00:39
+
+**Current Progress**: 15/21 models completed (71%)
+- **Fixed lag models**: COMPLETED (3 variables × 5 lags = 15 models)
+- **Estimated lag models**:
+  - strength_training: COMPLETED (19:52)
+  - walking: RUNNING (started 19:52, 4 chains active)
+  - cycling: PENDING
+- **Cumulative lag models**: NOT STARTED (directory empty)
+
+**Estimated Completion**: ~1 hour remaining
+- Walking estimated: ~5 minutes remaining (13.5 min/model)
+- Cycling estimated: ~13.5 minutes after walking completes
+- Cumulative models (3): ~40.5 minutes total (if sequential)
+
+**Next Steps**:
+1. Wait for model completion (~21:00)
+2. Run analysis script: `python -m src.analysis.analyze_crosslagged_results --results-dir output/full_comparison`
+3. Review HTML report and visualizations
+
+**Files Ready**: [src/analysis/analyze_crosslagged_results.py](src/analysis/analyze_crosslagged_results.py) loaded and tested.
+
+
+
+## Session Resume - 2026-02-05 10:42:22
+
+**Task**: Analyze completed cross-lagged model results and fix HTML report
+
+**Accomplishments**:
+
+1. ✅ **Fixed HTML report generation bug**:
+   - Fixed file path mismatch: `model_comparison_summary.csv` → `analysis_summary.csv`
+   - Updated HTML table to show actual available columns
+   - Regenerated complete HTML report
+
+2. ✅ **Analyzed cross-lagged model results**:
+   - All 21 models completed successfully
+   - Variables: `strength_training`, `walking`, `cycling`
+   - Model types: Fixed lag (τ=0,1,2,3,7), Estimated lag, Cumulative lag
+
+**Key Findings**:
+
+1. **No statistically significant effects**: All β values close to zero
+   - Credible intervals span both positive and negative values
+   - High uncertainty (CI widths: 3.2-3.7 units)
+
+2. **Consistent negative trend**: 18/21 models show negative β values
+   - Suggests weak tendency toward weight loss from workouts
+
+3. **Estimated lags**: ~3 days for all workout types
+   - strength_training: 3.07 days
+   - walking: 2.98 days  
+   - cycling: 2.99 days
+
+4. **Effect strength ranking** (most negative to least):
+   - Cycling: β = -0.197 ± 0.213
+   - Walking: β = -0.164 ± 0.169
+   - Strength training: β = -0.111 ± 0.095
+
+5. **No WAIC values available**: Model comparison metrics not computed
+
+**Interpretation**:
+- Workouts show weak association with weight loss (negative β)
+- Effects are not statistically significant (credible intervals include zero)
+- High uncertainty suggests need for more data or different modeling approach
+- Estimated optimal lag is ~3 days for all workout types
+
+**Files Updated**:
+- [src/analysis/analyze_crosslagged_results.py](src/analysis/analyze_crosslagged_results.py): Fixed HTML generation bug
+- [output/full_comparison/analysis_report.html](output/full_comparison/analysis_report.html): Regenerated with complete data tables
+
+**Next Steps**:
+1. Create cross-lagged analysis extension for health metrics
+2. Consider hierarchical models for individual differences
+3. Explore alternative modeling approaches given high uncertainty
+
+**Project Status**: **ANALYSIS COMPLETE** - Cross-lagged models analyzed, results documented.
+
+## Health-Workout Correlation Analysis - 2026-02-05 10:53:09
+
+**Task**: Create and run health-workout correlation analysis
+
+**Accomplishments**:
+
+1. ✅ **Created correlation analysis script** (`src/analysis/explore_health_workout_correlations.py`):
+   - Computes lagged correlations (0-7 days) between workouts and health metrics
+   - Identifies strongest relationships and optimal lags
+   - Generates comprehensive HTML reports and visualizations
+   - Handles 33 health metrics across 922 days
+
+2. ✅ **Ran comprehensive analysis**:
+   - Workout variables: `strength_training`, `walking`, `cycling`
+   - Health metrics: 29 metrics analyzed (sleep, heart, activity, respiration, body battery)
+   - Total analyses: 87 workout-health metric pairs
+   - Significant correlations: 55 (p < 0.05)
+
+**Key Findings**:
+
+### Strongest Positive Correlations:
+1. **Cycling → Total distance** (lag 0d): r = 0.448** (expected - cycling increases distance)
+2. **Walking → Total steps** (lag 0d): r = 0.441** (expected - walking increases steps)
+3. **Strength training → Active calories** (lag 0d): r = 0.411** (expected - workouts burn calories)
+4. **Walking → Wellness distance** (lag 0d): r = 0.409** 
+5. **Strength training → Total calories** (lag 0d): r = 0.394**
+
+### Strongest Negative Correlations:
+1. **Cycling → Total steps** (lag 0d): r = -0.145** (cycling days have fewer steps)
+2. **Cycling → Wellness distance** (lag 0d): r = -0.134** 
+3. **Cycling → Resting heart rate** (lag 6d): r = -0.133** (cycling lowers resting HR after 6 days)
+4. **Strength training → Body Battery lowest** (lag 0d): r = -0.122** (workouts drain energy)
+5. **Strength training → Body Battery highest** (lag 1d): r = -0.116**
+
+### Sleep Effects:
+- **Strength training**: Decreases light sleep percentage (r = -0.095**, lag 5d), increases REM sleep (r = 0.085**, lag 5d)
+- **Walking**: Increases total sleep (r = 0.065**, lag 4d) and REM sleep (r = 0.067**, lag 4d)
+- **Cycling**: Increases total sleep (r = 0.067**, lag 5d) but decreases sleep efficiency (r = -0.068**, lag 5d)
+
+### Body Battery (Energy):
+- **Strength training**: Drains energy (negative correlations with charged/highest/lowest)
+- **Walking**: Similar draining effect
+- **Cycling**: Increases charged battery (r = 0.096**, lag 4d) but increases drained (r = 0.116**, lag 0d)
+

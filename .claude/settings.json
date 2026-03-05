@@ -1,7 +1,23 @@
 {
   "permissions": {
     "allow": [
-      "Bash(/home/jflournoy/.cmdstan/cmdstan-2.36.0/bin/stanc:*)"
+      "Bash(/home/jflournoy/.cmdstan/cmdstan-2.36.0/bin/stanc:*)",
+      "Bash(sqlite3 health_connect_data/health_connect_export.db \".tables\")",
+      "Bash(sqlite3 health_connect_data/health_connect_export.db \"SELECT * FROM application_info_table LIMIT 20;\")",
+      "Bash(sqlite3 health_connect_data/health_connect_export.db \"SELECT name FROM sqlite_master WHERE type=''table'' AND name LIKE ''%exercise%'';\")",
+      "Bash(sqlite3 health_connect_data/health_connect_export.db \".schema exercise_session_record_table\")",
+      "Bash(sqlite3 health_connect_data/health_connect_export.db \"SELECT COUNT\\(*\\) FROM exercise_session_record_table WHERE app_info_id = 1;\")",
+      "Read(//home/jflournoy/code/garmin-analysis-v2/**)",
+      "Bash(file output/fitness_time_series/*.png)",
+      "Bash(file docs/fitness_time_series_report/visualizations/*.png)",
+      "Bash(echo \"Current max output tokens: $CLAUDE_CODE_MAX_OUTPUT_TOKENS\")",
+      "Bash(python create_four_fitness_educational_report.py)",
+      "Bash(md5sum docs/enhanced_fitness_time_series_report/*.png docs/enhanced_sensitivity_report/*.png)"
+    ],
+    "additionalDirectories": [
+      "/home/jflournoy/code/garmin-analysis-v2",
+      "/home/jflournoy/code/garmin-analysis-v2/docs",
+      "/home/jflournoy/code/garmin-analysis-v2/output/improved_fitness_weight"
     ]
   }
 }

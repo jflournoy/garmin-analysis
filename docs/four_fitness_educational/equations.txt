@@ -1,0 +1,14 @@
+FOUR-FITNESS STATE-SPACE MODEL EQUATIONS
+==================================================
+
+Impulse dynamics:
+I_i[t] = ψ_i I_i[t-1] + X_i[t]
+
+Fitness dynamics:
+F_i[t] = α_i F_i[t-1] + β_i I_i[t-1]
+
+Observation equation:
+W[t] = Σ_i γ_i F_i[t] + GP(t) + f_daily(t) + ε_w[t]
+
+Complete prediction:
+Ŵ[t] = Σ_i γ_i Σ_{k=1}^t α_i^{k-1} β_i Σ_{j=0}^{t-k} ψ_i^j X_i[t-k-j]

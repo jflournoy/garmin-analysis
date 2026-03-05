@@ -1,0 +1,4 @@
+variable,n_models,n_fixed,n_estimated,n_cumulative,beta_mean_avg,beta_std_avg,beta_positive,beta_negative,beta_zero,avg_ci_width,best_model,best_waic,best_beta
+strength_training,7,5,1,1,-0.11101550783742854,0.09532069460953299,1,6,0,3.717777821428571,N/A,,
+walking,7,5,1,1,-0.16363725654449998,0.16872693959235033,1,6,0,3.6112589642857125,N/A,,
+cycling,7,5,1,1,-0.1973492769100357,0.21304889581458075,1,6,0,3.1875984999999996,N/A,,

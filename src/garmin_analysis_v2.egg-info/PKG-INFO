@@ -1,0 +1,120 @@
+Metadata-Version: 2.4
+Name: garmin-analysis-v2
+Version: 0.1.0
+Summary: Bayesian analysis of Garmin health data using Stan
+Requires-Python: >=3.11
+Description-Content-Type: text/markdown
+License-File: LICENSE
+Requires-Dist: cmdstanpy>=1.2.0
+Requires-Dist: pandas>=2.0.0
+Requires-Dist: numpy>=1.24.0
+Requires-Dist: arviz>=0.17.0
+Requires-Dist: matplotlib>=3.7.0
+Requires-Dist: seaborn>=0.13.0
+Requires-Dist: pyarrow>=23.0.0
+Requires-Dist: scipy>=1.17.0
+Requires-Dist: netcdf4>=1.7.4
+Requires-Dist: markdown>=3.10.1
+Requires-Dist: pymdown-extensions>=10.20
+Requires-Dist: tabulate>=0.9.0
+Requires-Dist: plotly>=6.5.2
+Provides-Extra: dev
+Requires-Dist: pytest>=8.0.0; extra == "dev"
+Requires-Dist: pytest-cov>=4.0.0; extra == "dev"
+Dynamic: license-file
+
+# Garmin Health Data Analysis
+
+Bayesian analysis of personal health data from Garmin, using Stan for statistical modeling and D3.js for interactive visualization.
+
+## Overview
+
+This project provides tools for:
+
+1. **Bayesian modeling** of health metrics using Stan (weight, sleep, activity, etc.)
+2. **Interactive D3.js visualizations** for exploring health trends and relationships
+3. **Web interface** for viewing model results and predictions
+
+## Current Status
+
+- [x] Project structure and tooling setup
+- [x] Weight data extraction from Garmin export
+- [x] Proof-of-concept Gaussian Process model for weight trends
+- [ ] Interactive web visualization
+- [ ] Additional health metrics (sleep, activity, heart rate)
+- [ ] Cross-metric relationship modeling
+
+## Quick Start
+
+### Prerequisites
+
+- Python 3.11+
+- [uv](https://docs.astral.sh/uv/) for Python package management
+- CmdStan (installed automatically on first run)
+
+### Setup
+
+```bash
+# Install dependencies
+uv sync
+
+# Install CmdStan (if not already installed)
+uv run install_cmdstan
+
+# Run the weight analysis
+uv run python -m src.models.fit_weight
+```
+
+### Data
+
+This project analyzes personal Garmin data from the Garmin Connect export. Place your export in the `data/` directory:
+
+```
+data/
+└── DI_CONNECT/
+    ├── DI-Connect-Wellness/    # Biometrics, sleep, heart rate
+    ├── DI-Connect-Fitness/     # Activities, workouts
+    ├── DI-Connect-Aggregator/  # Daily summaries
+    └── DI-Connect-Metrics/     # VO2 max, training metrics
+```
+
+The `data/` directory is gitignored to protect personal health information.
+
+## Project Structure
+
+```
+garmin-analysis-v2/
+├── data/                    # Garmin export data (gitignored)
+├── stan/                    # Stan model files
+│   └── weight_gp.stan      # Gaussian Process weight model
+├── src/
+│   ├── data/               # Data loading utilities
+│   │   └── weight.py       # Weight data extraction
+│   ├── models/             # Model fitting code
+│   │   └── fit_weight.py   # Weight model fitting
+│   └── analysis/           # Analysis scripts
+├── web/                     # D3.js visualization (future)
+├── notebooks/              # Jupyter notebooks for exploration
+└── output/                 # Model outputs and plots
+```
+
+## Models
+
+### Weight Trend Model (`stan/weight_gp.stan`)
+
+A Gaussian Process model for weight over time that:
+- Captures smooth temporal trends
+- Quantifies uncertainty in predictions
+- Provides posterior predictive checks
+
+## Development
+
+This project uses:
+- **uv** for Python package management
+- **CmdStanPy** for Stan model compilation and sampling
+- **ArviZ** for Bayesian visualization and diagnostics
+- **TDD** for development methodology
+
+## License
+
+MIT License - see [LICENSE](LICENSE)

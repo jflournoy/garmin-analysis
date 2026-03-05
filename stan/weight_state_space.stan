@@ -59,7 +59,7 @@ data {
 parameters {
   // State-space parameters
   real<lower=0, upper=1> alpha;       // fitness decay (0 < α < 1)
-  real beta;                          // fitness gain per intensity unit
+  real<lower=0> beta;                 // fitness gain per intensity unit (positive)
   real gamma;                         // weight effect per unit fitness
 
   // Observation noise
@@ -113,7 +113,7 @@ model {
   // alpha: fitness persistence, should be high (0.8-0.95) since fitness persists
   alpha ~ beta(8, 2);                 // favors values around 0.8
   // beta: fitness gain per intensity, should be positive but moderate
-  beta ~ normal(0.2, 0.3);            // positive, modest effect for standardized intensity
+  beta ~ exponential(5);               // mean = 0.2, mode = 0 (positive only)
   // gamma: weight effect per fitness, should be negative (fitness reduces weight)
   gamma ~ normal(-0.5, 0.2);          // negative, stronger prior based on physiology
 

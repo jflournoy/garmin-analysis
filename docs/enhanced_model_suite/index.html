@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Enhanced Sensitivity Model: Complete Analysis Suite</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f8f9fa;
+            color: #333;
+            padding-top: 20px;
+            padding-bottom: 40px;
+        }
+        .header {
+            background: linear-gradient(135deg, #2c3e50, #3498db);
+            color: white;
+            padding: 3rem 0;
+            margin-bottom: 2rem;
+            border-radius: 0 0 20px 20px;
+        }
+        .report-card {
+            background: white;
+            border-radius: 10px;
+            padding: 2rem;
+            margin-bottom: 2rem;
+            border: 1px solid #dee2e6;
+            transition: transform 0.2s;
+        }
+        .report-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        }
+        .btn-report {
+            padding: 0.75rem 1.5rem;
+            font-size: 1.1rem;
+        }
+    </style>
+    <!-- Simple Analytics -->
+    <script async src="https://scripts.simpleanalyticscdn.com/latest.js"></script>
+</head>
+<body>
+    <div class="container">
+        <div class="header text-center">
+            <h1 class="display-4">Enhanced Sensitivity Model</h1>
+            <p class="lead">Complete Analysis Suite with Conservative Sampling</p>
+            <p class="mb-0">adapt_delta=0.99 | max_treedepth=12 | 4 chains × 2000 iterations</p>
+        </div>
+
+        <div class="alert alert-success">
+            <h4>🎯 Comprehensive Analysis Suite</h4>
+            <p>This suite provides complete visualization and analysis of the enhanced sensitivity model with conservative sampling for reliable inference.</p>
+        </div>
+
+        <div class="row">
+            <div class="col-md-6">
+                <div class="report-card">
+                    <h3>📊 Enhanced Sensitivity Report</h3>
+                    <p>Detailed analysis report with model diagnostics, parameter estimates, and performance metrics.</p>
+                    <ul>
+                        <li>Model diagnostics and convergence</li>
+                        <li>Parameter estimates with credible intervals</li>
+                        <li>Performance metrics and comparisons</li>
+                        <li>Technical implementation details</li>
+                    </ul>
+                    <a href="enhanced_sensitivity_report/index.html" class="btn btn-primary btn-report">View Report</a>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="report-card">
+                    <h3>📈 Enhanced Model Visualizations</h3>
+                    <p>Comprehensive visualizations including component time series, convergence diagnostics, and parameter distributions.</p>
+                    <ul>
+                        <li>Component time series analysis</li>
+                        <li>Convergence diagnostics (R-hat, ESS)</li>
+                        <li>Parameter distribution forest plots</li>
+                        <li>Fitness state evolution</li>
+                    </ul>
+                    <a href="enhanced_model_visualizations/index.html" class="btn btn-primary btn-report">View Visualizations</a>
+                </div>
+            </div>
+        </div>
+
+        <div class="row">
+            <div class="col-md-6">
+                <div class="report-card">
+                    <h3>⏱️ Missing Visualizations</h3>
+                    <p>Key time series and component analysis showing weight predictions, component breakdown, and fitness state evolution.</p>
+                    <ul>
+                        <li>Weight predictions vs observations</li>
+                        <li>Component breakdown over time</li>
+                        <li>Fitness state evolution with activity overlay</li>
+                        <li>Variance proportions and half-lives</li>
+                    </ul>
+                    <a href="missing_visualizations/index.html" class="btn btn-primary btn-report">View Time Series</a>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="report-card">
+                    <h3>🏃 Enhanced Fitness Time Series</h3>
+                    <p>Fitness-focused time series analysis with biological interpretation and enhanced sampling configuration.</p>
+                    <ul>
+                        <li>Fitness time series analysis</li>
+                        <li>Biological interpretation of results</li>
+                        <li>Enhanced sampling configuration</li>
+                        <li>Executive summary and key insights</li>
+                    </ul>
+                    <a href="enhanced_fitness_time_series_report/index.html" class="btn btn-primary btn-report">View Fitness Analysis</a>
+                </div>
+            </div>
+        </div>
+
+        <div class="row">
+            <div class="col-md-6">
+                <div class="report-card">
+                    <h3>🔬 Enhanced Model Overview</h3>
+                    <p>Model overview with technical specifications, sampling configuration, and implementation details.</p>
+                    <ul>
+                        <li>Model specification and equations</li>
+                        <li>Sampling configuration</li>
+                        <li>Implementation details</li>
+                        <li>Technical specifications</li>
+                    </ul>
+                    <a href="enhanced_model/index.html" class="btn btn-primary btn-report">View Overview</a>
+                </div>
+            </div>
+        </div>
+
+        <div class="alert alert-info">
+            <h5>📋 Model Configuration</h5>
+            <table class="table table-sm">
+                <tr><th>Parameter</th><th>Value</th><th>Purpose</th></tr>
+                <tr><td>adapt_delta</td><td>0.99</td><td>Conservative sampling, reduces divergent transitions</td></tr>
+                <tr><td>max_treedepth</td><td>12</td><td>Deeper exploration of posterior</td></tr>
+                <tr><td>warmup iterations</td><td>1000</td><td>Extended warmup for better adaptation</td></tr>
+                <tr><td>sampling iterations</td><td>1000</td><td>Sufficient samples for reliable inference</td></tr>
+                <tr><td>chains</td><td>4</td><td>Multiple chains for convergence diagnostics</td></tr>
+                <tr><td>prediction points</td><td>200</td><td>Dense grid for smooth predictions</td></tr>
+                <tr><td>fitness components</td><td>4</td><td>Aerobic/Strength × Short/Long-term</td></tr>
+            </table>
+        </div>
+
+        <div class="text-center text-muted mt-4">
+            <hr>
+            <p>Enhanced Sensitivity Model Analysis Suite | Generated: March 2026</p>
+            <p>All reports include Simple Analytics tracking for usage monitoring</p>
+        </div>
+    </div>
+</body>
+</html>

@@ -1,0 +1,114 @@
+# Claude Current Status - Condensed
+
+## Archive Note
+- **Condensed on**: Wed Feb 11 04:32:25 PM PST 2026
+- **Original size**: 319 lines
+- **Archived**: 119 lines to .claude-archive/status-archive-2026-02-11_16-32-25.txt
+- **Kept**: 200 lines (recent work)
+- **Previous archive**: Lines 1-119
+
+## Recent Work (Last 200 lines)
+========================================
+
+## Fix Double-Detrending in Spline Decomposition Visualization - IN PROGRESS - 2026-02-11 17:06:19
+
+**Task**: Fix double-detrending issue where detrended observations in spline decomposition plot were incorrectly negative due to adding y_mean multiple times.
+
+**Root Cause**: The back-transform function added y_mean to each component (fitness effect, GP trend, daily spline) individually, causing double subtraction when computing detrended observations.
+
+**Changes Made**:
+1. **plot_cyclic.py**: Split `back_transform` into `back_transform_component` (no y_mean) and `back_transform_total` (adds y_mean). Applied to `plot_state_space_spline_decomposition` and `plot_state_space_component_details`.
+2. **Detrended observations calculation**: Subtract y_mean once: `detrended_obs = obs_weight - fitness_mean_bt - gp_mean_bt - y_mean`.
+
+**Files Modified**:
+- `src/models/plot_cyclic.py`: Lines 1758-1767, 1779, 2054-2065
+
+**Next Steps**: Regenerate visualizations to verify fix.
+
+**Status**: **IN PROGRESS**
+
+**Status**: **MAIN TASKS COMPLETED**
+
+### Updates Made:
+1. **State-space expectations visualization**: Replaced with enhanced model version
+2. **Parameter estimates**: Updated to enhanced model values (α=0.741, ψ=0.639, β=0.078, γ=-0.355)
+3. **New visualization**: Added spline decomposition (`spline_decomposition.png`)
+4. **Report text**: Updated model description, conclusions, and captions
+5. **Probabilities**: Updated to reflect new credible intervals (~76% β>0, ~82% ψ>0.5, >99.9% γ<0)
+
+### Remaining Items:
+- Daily pattern visualization not included in report (test version exists)
+
+
+## Commit and Push - Weight Fitness Report Updates - COMPLETED - 2026-02-11
+
+**Task**: Commit and push updated weight fitness report
+
+**Status**: **COMPLETED SUCCESSFULLY**
+
+**Commit**: e65785d - `feat: update weight fitness report with enhanced spline model results`
+- Updated parameter estimates to enhanced spline model values
+- Added spline decomposition visualization
+- Updated state-space expectations visualization
+- Revised conclusions and captions
+
+**Push**: Successfully pushed to origin/main
+
+### Next Steps (from previous analysis) - UPDATED 2026-02-11:
+
+**✅ COMPLETED: Update weight-fitness report with enhanced model results**
+   - Enhanced model results (α=0.741, ψ=0.639, β=0.078, γ=-0.355) now in report
+   - Spline decomposition visualization added to report
+   - State-space expectations visualization updated with enhanced model
+   - Parameter estimates and conclusions updated
+
+**❌ STILL PENDING:**
+   - Daily pattern visualization not included in report (test version exists)
+   - Consider adding relevant untracked files to version control
+
+========================================
+## Remove Cross-Lag Analysis from Weight Fitness Report - COMPLETED - 2026-02-11 15:30:52
+
+**Task**: Remove cross-lag analysis sections from weight fitness report as requested by user
+
+**Status**: **COMPLETED SUCCESSFULLY**
+
+### Changes Made:
+1. **Overview section**: Updated text from "two complementary modeling approaches" to "state-space modeling", removed Cross-Lagged GP Models card
+2. **Model descriptions**: Removed entire "2. Cross-Lagged Gaussian Process Models" section
+3. **Results section**: Removed "Cross-Lagged Model Comparison" finding
+4. **Visualizations**: Removed four cross-lag related visualizations:
+   - Cross-Lagged Effect Sizes by Workout Type
+   - Lag-Effect Relationship
+   - Credible Interval Widths by Model Type
+   - Beta vs Lag for All Workout Types
+5. **Interpretation section**:
+   - Removed "Metric Matters" bullet point (referenced cross-lagged modeling)
+   - Removed "Immediate to Short-Term Effects" bullet point (based on lag analysis)
+   - Renumbered remaining insights
+   - Removed entire "Model Comparison and Selection" subsection
+6. **Technical implementation**:
+   - Removed references to cross-lagged Stan models and analysis scripts in project structure
+   - Updated footer from "Stan state-space and Gaussian Process models" to "Stan state-space models"
+
+### Files Modified:
+- `docs/weight_fitness_report/index.html` - Removed all cross-lag analysis references
+
+### Next Steps:
+- Address user's new request about spline decomposition visualization enhancements
+- Ensure daily pattern visualization is properly detrended
+
+========================================
+## Spline Decomposition Visualization Enhancements - IN PROGRESS - 2026-02-11 15:54:14
+
+**Task**: Enhance spline decomposition visualization based on user feedback:
+1. Keep the weight decomposition plot as is AND have component-by-component plots for closer inspection
+2. The within-day spline should DETREND the weight observations so they are on the same scale as the daily spline predictions
+
+**Current Analysis**:
+- The spline decomposition plot is generated by `plot_state_space_spline_decomposition()` in `src/models/plot_cyclic.py:1667-1958`
+- The within-day pattern panel currently shows:
+  - Daily pattern mean from Fourier spline (blue line with CI)
+  - "Observed daily component" which is actually the model's daily spline component estimate (`daily_mean_bt`), NOT detrended observations
+- Need to compute detrended observations: `obs_weight - fitness_mean_bt - gp_mean_bt` and plot against `hour_of_day`
+- Need to create component-by-component plots for closer inspection (separate plots for fitness effect, GP trend, daily spline, residuals)

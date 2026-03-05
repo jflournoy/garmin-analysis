@@ -62,7 +62,7 @@ parameters {
   // State-space parameters
   real<lower=0, upper=1> alpha;       // fitness decay (0 < α < 1)
   real<lower=0, upper=1> psi;         // impulse decay (0 < ψ < 1)
-  real beta;                          // fitness gain per unit impulse
+  real<lower=0> beta;                 // fitness gain per unit impulse (positive)
   real gamma;                         // weight effect per unit fitness
 
   // Observation noise
@@ -125,7 +125,7 @@ model {
   // psi: impulse decay, should be moderate (0.5-0.8) since workout effects fade
   psi ~ beta(5, 2);                   // favors values around 0.7
   // beta: fitness gain per impulse, should be positive but moderate
-  beta ~ normal(0.3, 0.2);            // positive, modest effect for standardized impulse
+  beta ~ exponential(3.33);           // mean = 0.3, mode = 0 (positive only)
   // gamma: weight effect per fitness, should be negative (fitness reduces weight)
   gamma ~ normal(-0.5, 0.2);          // negative, stronger prior based on physiology
 

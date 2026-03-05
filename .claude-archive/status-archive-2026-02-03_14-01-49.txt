@@ -1,0 +1,391 @@
+# Claude Current Status - Condensed
+
+## Archive Note
+- **Condensed on**: Sat Jan 31 11:17:24 PM PST 2026
+- **Original size**: 265 lines
+- **Archived**: 65 lines to .claude-archive/status-archive-2026-01-31_23-17-24.txt
+- **Kept**: 200 lines (recent work)
+- **Previous archive**: Lines 1-65
+
+## Recent Work (Last 200 lines)
+========================================
+
+
+---
+
+## Previous Tasks Completed (2026-01-29)
+
+### 1. Visualization enhancement: Added weekly component visualization to comparison plots in create_comparison_plots()
+
+**Implemented**:
+1. Created `plot_spline_weekly_pattern()` function in [src/models/plot_cyclic.py](src/models/plot_cyclic.py)
+   - Uses weekly Fourier coefficients (`b_sin`, `b_cos`) and `day_of_week` data
+   - Plots weekly pattern across 0-7 days (Monday-Sunday) with uncertainty bands
+   - Includes detrended & dedaily residuals comparison
+   - Follows same pattern as existing `plot_spline_daily_pattern()`
+
+2. Updated `create_comparison_plots()` in [src/models/demo_general.py](src/models/demo_general.py):
+   - Replaced placeholder daily pattern comparison with actual daily pattern extraction
+   - Added weekly pattern visualization for weekly model
+   - Daily pattern comparison now shows both models' daily patterns with credible intervals
+   - Weekly pattern visualization includes:
+     - Left: Weekly pattern with individual posterior samples (first 50) and 95% CI
+     - Right: Detrended & dedaily residuals vs. estimated weekly pattern
+   - Updated import to include `plot_spline_weekly_pattern`
+
+**Files Modified**:
+- `src/models/plot_cyclic.py` - Added `plot_spline_weekly_pattern()`
+- `src/models/demo_general.py` - Updated imports and `create_comparison_plots()`
+
+### 2. Model diagnostics: Addressed WAIC/LOO warnings about high Pareto k values (>0.57)
+
+**Enhanced Pareto k diagnostics with concrete solutions**:
+
+1. **Enhanced diagnostic thresholds** in `compare_models_waic_loo()`:
+   - `k > 0.57` (warning), `k > 0.7` (high), `k > 1.0` (very high)
+   - Lists indices of problematic observations
+   - Provides specific recommendations
+
+2. **Added utility functions for dealing with high Pareto k**:
+   - `get_pareto_k_diagnostics()` - Detailed Pareto k statistics
+   - `get_high_k_observations()` - Extract DataFrame rows for high-k observations
+   - `check_loo_reliability()` - Assess LOO-CV reliability with recommendations
+   - `compare_models_with_fallback()` - Use WAIC when LOO is unreliable
+
+3. **Concrete recommendations for high Pareto k values**:
+   - **Investigate**: Use `get_high_k_observations()` to examine problematic data points
+   - **Alternative metrics**: Use WAIC instead of LOO when k values are high
+   - **Model improvements**: Consider robust likelihoods (Student-t instead of normal)
+   - **Data quality**: Check for measurement errors or outliers
+   - **Computation**: LOO adds O(N) overhead; WAIC is faster and more robust
+
+**Files Modified**:
+- `src/models/fit_weight.py` - Enhanced Pareto k diagnostics and added utility functions
+
+## Addressing LOO Overhead (User Question)
+
+**LOO-CV computational overhead**:
+- LOO requires computing leave-one-out predictive densities for each observation (O(N))
+- For N=147 observations in current dataset, adds ~147x additional computation
+- WAIC is faster and often more robust to high Pareto k values
+- **Recommendation**: Use WAIC for model comparison when speed is important or LOO shows high k values
+
+**Practical steps**:
+1. Use `check_loo_reliability()` to assess if LOO is reliable
+2. If unreliable or slow, use WAIC via `compare_models_with_fallback()`
+3. Examine high-k observations with `get_high_k_observations()`
+4. Consider model modifications for robustness
+
+## Next Steps
+
+1. **Test enhanced diagnostics**: Run full model comparison with new functions
+2. **Update demo scripts**: Integrate `compare_models_with_fallback()` in `demo_general.py`
+3. **Performance testing**: Compare LOO vs WAIC computation time
+4. **Robust modeling**: Consider adding Student-t likelihood option to models
+
+## Usage Examples
+
+```python
+# Check LOO reliability
+from src.models.fit_weight import check_loo_reliability, get_high_k_observations
+
+reliability = check_loo_reliability(idata)
+print(f"LOO reliable: {reliability['is_reliable']}")
+for rec in reliability['recommendations']:
+    print(f"  • {rec}")
+
+# Examine high-k observations
+high_obs = get_high_k_observations(idata, df)
+print(f"Found {len(high_obs)} observations with Pareto k > 0.7")
+if len(high_obs) > 0:
+    print(high_obs[['timestamp', 'weight_lbs', 'pareto_k']].head())
+```
+
+### 3. Robust likelihood: Implemented Student-t distribution for both daily and weekly models
+
+**Implemented Student-t likelihood for outlier robustness**:
+
+1. **Modified Stan models**:
+   - `stan/weight_gp_spline_optimized.stan`: Added `nu` parameter (degrees of freedom) with gamma(2, 0.1) prior
+   - `stan/weight_gp_spline_weekly.stan`: Added `nu` parameter with same prior
+   - Changed likelihood from `normal(f_total, sigma)` to `student_t(nu, f_total, sigma)`
+   - Updated generated quantities: `y_rep`, `log_lik`, `y_pred` use Student-t distributions
+   - Adjusted variance proportion calculations for Student-t variance (sigma^2 * nu/(nu-2) when nu > 2)
+   - Updated header comments to reflect Student-t likelihood
+
+2. **Updated Python fitting code**:
+   - `src/models/fit_weight.py`: Added `nu` to initial values (default 10.0) in `generate_init()` for both models
+   - Updated docstrings to mention Student-t likelihood for robustness
+   - No changes needed to data preparation or caching (cache invalidated by Stan file hash changes)
+
+3. **Testing**:
+   - Both models compile successfully (compile time ~20s each)
+   - Minimal sampling test (5 warmup, 5 sampling, 1 chain) runs without errors
+   - Daily model estimated nu ~4.1 (heavy-tailed), weekly model nu ~16.7 (near-normal)
+   - Parameter `nu` appears correctly in posterior samples
+
+**Next Steps**:
+- Run full model comparison with Student-t likelihood to see impact on WAIC/LOO
+- Check if Pareto k values improve with robust likelihood
+- Consider adding option to switch between normal and Student-t likelihoods
+
+---
+
+## Bug Fix: NameError in demo_general.py
+
+**2026-01-30 13:24** - Fixed NameError: name 'use_sparse' is not defined in `run_daily_model` and `run_weekly_model` functions.
+
+**Root cause**: The functions referenced global variable `use_sparse` instead of `args.use_sparse`. The `use_sparse` variable is defined in `main()` as `use_sparse = not args.no_sparse` but not passed to subfunctions.
+
+**Solution**:
+1. Added `args.use_sparse = use_sparse` after parsing arguments in `main()`.
+2. Changed `if use_sparse:` to `if args.use_sparse:` in both `run_daily_model` and `run_weekly_model`.
+3. Updated `use_sparse=use_sparse` arguments in `write_model_report` calls to `use_sparse=args.use_sparse`.
+
+**Testing**: Ran `uv run -m src.models.demo_general --model both` with minimal chains and iterations. Both models fit successfully without NameError.
+
+**Files modified**:
+- `src/models/demo_general.py`
+
+## Review of Comparison Results
+
+**2026-01-30** - Reviewed comparison report generated after enhanced reporting refactoring.
+
+**Key Findings**:
+- Weekly model weakly preferred (WAIC weight 0.64, LOO weight 0.54)
+- Weekly amplitude 0.70 lbs (95% CI [0.14, 1.38]) indicates detectable day-of-week pattern
+- Weekly component explains 0.7% of total variance, daily component 3%
+- Measurement error reduced by 2.1% with weekly model
+- No divergent transitions, good convergence
+
+**Recommendation**: Weekly model provides modest improvement; weekly pattern is statistically detectable but explains small proportion of variance.
+
+---
+
+*Previous detailed history archived in git commits.*
+
+## Session Start - 2026-01-31
+
+**Resuming work after context refresh using `/continue` command.**
+
+**Current Project State**:
+- Weekly model comparison completed (2026-01-30)
+- Weekly model weakly preferred (WAIC weight 0.64, LOO weight 0.54)
+- Weekly pattern statistically detectable but explains small variance (0.7%)
+- Multiple modified files in git status (8 modified, many untracked)
+- Recent commits focused on documentation and status tracking workflow
+
+**Git Status Summary**:
+- 8 modified files (mostly documentation and configuration)
+- Many untracked files from model development work
+- Branch ahead of origin/main by 2 commits
+
+**Key Modified Files**:
+- `.claude/commands/README.md`, `CLAUDE.md` - Status tracking documentation
+- `src/models/fit_weight.py` - Model fitting utilities
+- `stan/weight_gp.stan` - Stan model updates
+- Various analysis and demo scripts
+
+**Next Steps to Determine**:
+1. Review modified files to understand recent changes
+2. Check if any pending work needs completion
+3. Determine priority based on project goals (Bayesian analysis of Garmin health data)
+
+## Hygiene Check Results - 2026-01-31
+
+**Key Findings**:
+- ❌ Lint issues found (needs attention)
+- ❌ Tests failing (needs investigation)
+- 29 files with modifications
+- 2617 debt markers identified
+- Many untracked files from model development
+
+**Git Status Summary**:
+- 8 modified files (documentation, configuration, model code)
+- ~50+ untracked files (analysis scripts, model variations, tests)
+- Branch ahead of origin/main by 2 commits
+
+**Immediate Actions Needed**:
+1. Review and commit current changes
+2. Address lint and test issues
+3. Organize untracked files (add to git or clean up)
+4. Plan next development phase based on project goals
+
+## Condensation Note
+- **File condensed**: 2026-01-31 23:17:24
+- **Original size**: 265 lines
+- **Archived**: 65 lines to `.claude-archive/status-archive-2026-01-31_23-17-24.txt`
+- **Kept**: 200 lines (recent work)
+
+## Next Development Phase Planning
+
+Based on project goals and current state:
+
+**Project Goals (from CLAUDE.md)**:
+1. Bayesian models in Stan for analyzing Garmin data (weight, sleep, activity, etc.)
+2. Interactive D3.js visualizations for exploring health relationships
+3. Web interface for exploring model results and data trends
+
+**Current Progress**:
+- ✅ Weight modeling: Weekly vs daily comparison completed
+- ✅ Workout data analysis: Report generated, metrics assessed
+- ⚠️ Multiple analysis scripts created but not integrated
+- ⚠️ Many untracked files need organization
+- ❌ Lint/test issues need addressing
+
+**Recommended Next Steps**:
+
+### Phase 1: Code Quality & Organization (Immediate)
+1. **Commit current changes** - Documentation updates, model enhancements
+2. **Address hygiene issues** - Fix lint and test failures
+3. **Organize untracked files** - Add useful scripts to git, clean up temporary files
+4. **Run TDD workflow** for any new features
+
+### Phase 2: Model Extension (Short-term)
+1. **Extend to other health metrics** - Sleep, activity, VO2 max based on existing data modules
+2. **Bivariate/cross-lagged models** - Explore relationships between metrics
+3. **Enhance visualization** - Improve model result presentation
+
+### Phase 3: Web Interface (Medium-term)
+1. **D3.js visualizations** - Interactive plots for health trends
+2. **Simple web dashboard** - Model results exploration
+3. **Data pipeline** - Automated model updates with new data
+
+**Priority Recommendation**: Start with Phase 1 to clean up current state, then proceed to extending models to sleep/activity data.
+## Session Resume - 2026-02-02 08:30:14
+
+**Resumed work using /continue command to clean up project state.**
+
+**Accomplished Tasks:**
+
+1. **Code Quality & Hygiene**:
+   - Fixed 230+ lint errors automatically using ruff
+   - Addressed remaining 27 lint issues
+   - Verified all tests pass (45/45 tests passing)
+
+2. **File Organization**:
+   - Added 50+ useful scripts and modules to git
+   - Cleaned up compiled binaries and temporary files
+   - Organized untracked files into logical categories
+
+3. **Atomic Commits** (11 commits total):
+   - feat: add Claude command system and status tracking workflow
+   - docs: add model explanations and workout analysis reports  
+   - chore: update dependencies and project configuration
+   - feat: add comprehensive health data analysis scripts
+   - feat: expand data loading modules for comprehensive health analysis
+   - feat: add model demonstration and visualization utilities
+   - feat: expand Stan model collection for advanced Bayesian analysis
+   - test: add comprehensive test suite for model validation
+   - chore: add status archive for historical context
+
+**Current Project State**:
+- ✅ Code quality improved (lint issues addressed)
+- ✅ Tests passing
+- ✅ Files organized and committed
+- ✅ Ready for next development phase
+
+**Next Phase Recommendations**:
+Based on project goals from CLAUDE.md:
+1. **Extend models to other health metrics** (sleep, activity, VO2 max)
+2. **Develop bivariate/cross-lagged models** for relationship exploration
+3. **Enhance visualization** with D3.js interactive plots
+4. **Build web interface** for model result exploration
+
+**Files to Reference**:
+- [src/data/activity.py](src/data/activity.py) - Daily metrics loading
+- [src/data/sleep.py](src/data/sleep.py) - Sleep data processing
+- [src/analysis/bivariate_evaluation.py](src/analysis/bivariate_evaluation.py) - Correlation analysis
+- [stan/weight_gp_bivariate.stan](stan/weight_gp_bivariate.stan) - Bivariate model
+- [stan/weight_gp_crosslagged.stan](stan/weight_gp_crosslagged.stan) - Cross-lagged model
+
+
+## Session: Status Analysis & Correction - 2026-02-02 09:30:56
+
+**DISCOVERED CRITICAL ISSUE: Prepend/Append Mismatch in Status Tracking**
+
+**Problem Identified**:
+- Previous sessions were **PREPENDED** (added to top) of `.claude-current-status`
+- Our current session correctly **APPENDED** (added to bottom)
+- `/condense` archives from TOP (head), keeps BOTTOM (tail)
+- `/continue` extracts from main file only
+- **Result**: Recent work (at top) gets archived, older work (at bottom) stays visible
+
+**Evidence**:
+- `.claude-archive/status-archive-2026-01-31_22-28-02.txt` → Contains bivariate/cross-lagged work from Jan 31
+- `.claude-current-status` "Recent Work" section → Actually contains Jan 29 work
+- Archive has NEWER timestamps than main file's "recent" section
+
+**What Was Actually Accomplished (Jan 31)**:
+1. **Bivariate GP Development**:
+   - Created weight_gp_bivariate.stan and weight_gp_bivariate_mismatched.stan
+   - Implemented correlation analysis with daily metrics
+   - Tested with weight + resting heart rate data
+
+2. **Cross-Lagged Models**:
+   - Created estimated lag model (weight_gp_crosslagged_estimated.stan)
+   - Created cumulative lag model (weight_gp_crosslagged_cumulative.stan)
+   - Added Python support functions in src/data/align.py
+
+3. **Workout Data Report**:
+   - Created docs/workout_data_report.md
+   - Documented Garmin workout data fields and quality issues
+
+4. **Daily Metrics Integration**:
+   - Created src/data/activity.py, sleep.py, vo2max.py, workout.py
+   - Added correlation exploration scripts in src/analysis/
+
+**What We Just Accomplished (Feb 2)**:
+1. **Recovered Context**: Examined archive files to understand true work history
+2. **Fixed Code Quality**: Addressed 230+ lint errors, verified all tests pass
+3. **Organized Files**: Added 50+ useful scripts/modules to git, cleaned up binaries
+4. **Created Atomic Commits**: 11 focused commits documenting all work
+5. **Identified Workflow Bug**: Discovered prepend/append issue in status tracking
+
+**True Current Project State**:
+- ✅ **Bivariate/Cross-lagged Foundation**: Models and analysis scripts exist (recovered from archives)
+- ✅ **Code Quality**: Lint issues addressed, tests passing
+- ✅ **File Organization**: Useful files committed, temporary files cleaned up
+- ✅ **Documentation**: Model explanations and workout reports documented
+- ⚠️ **Status Tracking**: Need to fix prepend/append workflow issue
+
+**Correct Workflow Going Forward**:
+```bash
+# ✅ ALWAYS APPEND (correct)
+cat >> .claude-current-status << 'EOF'
+## Session Start - $(date)
+...new work...
+EOF
+
+# ❌ NEVER PREPEND (wrong approach)
+# cat new_work.md .claude-current-status > temp && mv temp .claude-current-status
+
+**Immediate Next Steps**:
+1. **Fix Status Tracking**: Update all scripts/templates to ensure appending
+2. **Resume Bivariate Work**: Continue from Jan 31 bivariate/cross-lagged development  
+3. **Test Models**: Run bivariate models with actual health metrics data
+4. **Enhance Visualization**: Create D3.js plots for correlation exploration
+
+**Key Files (Now in Git)**:
+- [stan/weight_gp_bivariate.stan](stan/weight_gp_bivariate.stan) - Bivariate GP model
+- [stan/weight_gp_crosslagged.stan](stan/weight_gp_crosslagged.stan) - Cross-lagged model
+- [src/analysis/bivariate_evaluation.py](src/analysis/bivariate_evaluation.py) - Correlation analysis
+- [src/data/align.py](src/data/align.py) - Data alignment utilities
+- [docs/workout_data_report.md](docs/workout_data_report.md) - Workout data documentation
+
+**Status File Integrity Check**:
+- Main file currently has: Jan 29 work (mislabeled as "recent") + Feb 2 sessions
+- Archive files contain: Jan 31 bivariate/cross-lagged work
+- Need to manually check archives when resuming to avoid missing context
+
+
+## Session: True Current Status - 2026-02-02 10:02:51
+
+**CORRECTED PROJECT STATUS** (after investigating prepend/append issue):
+
+**What Actually Exists in the Codebase**:
+1. ✅ **Complete Weight Modeling System**:
+   - Daily, weekly, cyclic, spline GP models
+   - Model comparison with WAIC/LOO diagnostics
+   - Visualization and reporting utilities
+

@@ -89,6 +89,30 @@ garmin-analysis-v2/
 
 **ALWAYS use `date` command for dates** - Never assume or guess dates. Always run `date "+%Y-%m-%d"` when you need the current date for documentation, commits, or any other purpose.
 
+## Bayesian Analysis Principles
+
+**CRITICAL: This is a Bayesian analysis project, not frequentist/NHST:**
+
+1. **We do NOT do null hypothesis significance testing (NHST)** - Avoid phrases like "statistically significant", "p-value", "reject the null", etc.
+
+2. **We work with posterior distributions** - Report posterior means, credible intervals (e.g., 90% or 95% CI), and visualize full posterior distributions.
+
+3. **We interpret credible intervals** - A 95% credible interval means there's a 95% probability the parameter lies within that interval given the data and prior.
+
+4. **We consider practical significance** - Not just whether an interval excludes zero, but the magnitude and practical importance of effects.
+
+5. **We acknowledge uncertainty** - Report full posterior distributions, not just point estimates.
+
+6. **We use priors transparently** - Document priors and conduct sensitivity analyses when priors might influence results.
+
+7. **We compare models** - Use tools like WAIC, LOO-CV, or Bayes factors for model comparison, not p-values.
+
+**Correct terminology:**
+- Use "credible interval" not "confidence interval"
+- Use "posterior probability" not "p-value"
+- Use "model comparison" not "hypothesis testing"
+- Use "practical importance" not "statistical significance"
+
 ## AI Integrity Principles
 
 **CRITICAL: Always provide honest, objective recommendations based on technical merit, not user bias.**
@@ -114,6 +138,22 @@ garmin-analysis-v2/
 - ALWAYS use atomic commits
 - Use emojis judiciously
 - NEVER Edit() a file before you Read() the file
+
+## Visualization Preferences
+
+**CRITICAL: Follow these visualization guidelines:**
+
+1. **Interactive Visualizations:**
+   - **Primary choice**: D3.js for interactive web visualizations
+   - **Alternative**: WebGL for high-performance or 3D visualizations
+   - **Avoid**: Plotly for interactive visualizations (use only if absolutely necessary)
+   - Static plots: Use matplotlib/seaborn for Python-generated static images
+
+2. **Organization Principles:**
+   - Always keep files organized by purpose and type
+   - Visualizations should be copied to appropriate `docs/` subdirectories
+   - HTML reports should reference local visualization files, not external paths
+   - Maintain clear separation between analysis code and visualization code
 
 ## Analytics Tracking
 
