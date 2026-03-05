@@ -19,6 +19,8 @@ stan/**/*.hpp
 # Compiled Stan binaries (CmdStanPy output) - ignore files without .stan extension in stan/
 stan/*
 !stan/*.stan
+!stan/archive/
+!stan/archive/*.stan
 
 # Python virtual environment
 .venv/
