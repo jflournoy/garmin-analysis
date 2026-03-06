@@ -205,7 +205,7 @@ def extract_component_predictions(fit, date_range, pred_hours):
                 spline_value = 0.0
                 for k in range(len(a_sin)):
                     freq = 2.0 * np.pi * (k + 1)  # k is 0-indexed, harmonics are 1-indexed
-                    spline_value += a_sin[k] * np.sin(freq * hour_scaled) + a_cos[k] * cos(freq * hour_scaled)
+                    spline_value += a_sin[k] * np.sin(freq * hour_scaled) + a_cos[k] * np.cos(freq * hour_scaled)
                 spline_component[s, d, h_idx] = spline_value
 
     # Compute total prediction (intercept + strength + aerobic + spline)

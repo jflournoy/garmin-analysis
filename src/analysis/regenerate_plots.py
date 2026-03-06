@@ -180,7 +180,7 @@ def create_component_visualizations(components, df_weight, dates, hours, output_
         plt.setp(ax.xaxis.get_majorticklabels(), rotation=45)
 
     plt.tight_layout()
-    output_filename = f'component_time_series_noon_proper_scaling{suffix}.png'
+    output_filename = f'component_time_series_noon{suffix}.png'
     plt.savefig(output_dir / output_filename, dpi=150, bbox_inches='tight')
     plt.close()
     print(f"  Saved: {output_dir}/{output_filename}")
@@ -222,7 +222,7 @@ def create_component_visualizations(components, df_weight, dates, hours, output_
     plt.setp(ax.xaxis.get_majorticklabels(), rotation=45)
 
     plt.tight_layout()
-    output_filename = f'total_predictions_heatmap_proper_scaling{suffix}.png'
+    output_filename = f'total_predictions_heatmap{suffix}.png'
     plt.savefig(output_dir / output_filename, dpi=150, bbox_inches='tight')
     plt.close()
     print(f"  Saved: {output_dir}/{output_filename}")
@@ -291,7 +291,7 @@ def create_component_visualizations(components, df_weight, dates, hours, output_
         fig.delaxes(axes[idx])
 
     plt.tight_layout()
-    output_filename = f'component_contributions_sample_dates_proper_scaling{suffix}.png'
+    output_filename = f'component_contributions_sample_dates{suffix}.png'
     plt.savefig(output_dir / output_filename, dpi=150, bbox_inches='tight')
     plt.close()
     print(f"  Saved: {output_dir}/{output_filename}")
@@ -355,7 +355,7 @@ def create_component_visualizations(components, df_weight, dates, hours, output_
     ax.set_ylim(y_min - y_padding, y_max + y_padding)
 
     plt.tight_layout()
-    output_filename = f'daily_patterns_analysis_proper_scaling{suffix}.png'
+    output_filename = f'daily_patterns_analysis{suffix}.png'
     plt.savefig(output_dir / output_filename, dpi=150, bbox_inches='tight')
     plt.close()
     print(f"  Saved: {output_dir}/{output_filename}")
@@ -403,7 +403,7 @@ def create_component_visualizations(components, df_weight, dates, hours, output_
     ax.grid(True, alpha=0.3)
 
     plt.tight_layout()
-    output_filename = f'prediction_vs_actual_scatter_proper_scaling{suffix}.png'
+    output_filename = f'prediction_vs_actual_scatter{suffix}.png'
     plt.savefig(output_dir / output_filename, dpi=150, bbox_inches='tight')
     plt.close()
     print(f"  Saved: {output_dir}/{output_filename}")
@@ -447,7 +447,7 @@ def main():
     components, dates, hours = extract_components_from_dataframe(df_all, suffix)
 
     # Create output directory
-    output_dir = "docs/regenerated_plots"
+    output_dir = "docs/component_predictions"
 
     # Create visualizations with proper scaling
     create_component_visualizations(components, df_weight, dates, hours, output_dir, suffix)
