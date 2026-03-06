@@ -116,17 +116,14 @@ def create_component_visualizations(components, df_weight, dates, hours, output_
         noon_idx = noon_idx[0]
 
     # 1. Time series of each component at noon (12:00) with actual weight data
-    fig, axes = plt.subplots(3, 2, figsize=(16, 12))
+    fig, axes = plt.subplots(1, 3, figsize=(18, 5))
     axes = axes.flatten()
 
-    component_names = ['intercept', 'strength', 'aerobic', 'spline', 'total', 'full_model']
+    component_names = ['strength', 'aerobic', 'spline']
     titles = [
-        'Intercept Component',
         'Strength Fitness Component',
         'Aerobic Fitness Component',
-        'Daily Spline Component',
-        'Total Prediction (All Components)',
-        'Full Model Prediction (from Stan)'
+        'Daily Spline Component'
     ]
 
     # Prepare actual weight data for noon (filter weights measured around noon)
@@ -194,7 +191,7 @@ def create_component_visualizations(components, df_weight, dates, hours, output_
     # Convert dates to ordinal numbers (days since 0001-01-01)
     dates_ordinal = np.array([pd.Timestamp(d).toordinal() for d in dates_np])
 
-    im = ax.imshow(mean_total.T, aspect='auto', cmap='viridis',
+    im = ax.imshow(mean_total.T, aspect='auto', cmap='RdYlBu_r',
                    extent=[dates_ordinal[0], dates_ordinal[-1],
                            hours_np[0], hours_np[-1]],
                    origin='lower')
@@ -209,9 +206,9 @@ def create_component_visualizations(components, df_weight, dates, hours, output_
     ax.set_ylabel('Hour of Day')
     ax.set_title('Total Predictions Heatmap with Actual Weight Measurements')
 
-    # Format x-axis with dates
+    # Format x-axis with dates (include year)
     date_ticks = np.linspace(dates_ordinal[0], dates_ordinal[-1], 8)
-    date_labels = [pd.Timestamp.fromordinal(int(d)).strftime('%Y-%m-%d') for d in date_ticks]
+    date_labels = [pd.Timestamp.fromordinal(int(d)).strftime('%m/%d\n%Y') for d in date_ticks]
     ax.set_xticks(date_ticks)
     ax.set_xticklabels(date_labels)
 
@@ -246,9 +243,8 @@ def create_component_visualizations(components, df_weight, dates, hours, output_
             mean, _, _ = components[component_name]
             components_at_date[component_name] = mean[date_idx, :]
 
-        # Plot line plot
+        # Plot line plot (strength, aerobic, spline - no intercept)
         for component_name, color, label in [
-            ('intercept', 'gray', 'Intercept'),
             ('strength', 'blue', 'Strength'),
             ('aerobic', 'green', 'Aerobic'),
             ('spline', 'orange', 'Spline')
@@ -299,22 +295,22 @@ def create_component_visualizations(components, df_weight, dates, hours, output_
     # 4. Daily patterns analysis
     fig, axes = plt.subplots(1, 2, figsize=(14, 6))
 
-    # Left: Mean daily pattern
+    # Left: Spline-only daily pattern
     ax = axes[0]
-    mean_total, _, _ = components['total']
-    mean_daily = mean_total.mean(axis=0)
+    mean_spline, _, _ = components['spline']
+    mean_spline_daily = mean_spline.mean(axis=0)
 
-    ax.plot(hours_np, mean_daily, 'o-', linewidth=3, markersize=6,
-            color='darkblue', label='Mean Daily Pattern')
+    ax.plot(hours_np, mean_spline_daily, 'o-', linewidth=3, markersize=6,
+            color='orange', label='Spline Component')
     ax.set_xlabel('Hour of Day')
     ax.set_ylabel('Weight (lbs)' if 'lbs' in suffix else 'Standardized Weight')
-    ax.set_title('Mean Daily Weight Pattern')
+    ax.set_title('Mean Daily Spline Pattern')
     ax.legend()
     ax.grid(True, alpha=0.3)
 
     # Set y-axis limits
-    y_min = np.min(mean_daily)
-    y_max = np.max(mean_daily)
+    y_min = np.min(mean_spline_daily)
+    y_max = np.max(mean_spline_daily)
     y_range = y_max - y_min
     y_padding = y_range * 0.05
     ax.set_ylim(y_min - y_padding, y_max + y_padding)
