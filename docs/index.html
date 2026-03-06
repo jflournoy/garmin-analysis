@@ -106,46 +106,16 @@
     </div>
 
     <div class="doc-list">
-        <div class="doc-card">
+        <div class="doc-card" style="border-left-color: #27ae60;">
             <h3>⭐ Current Model Output</h3>
             <p><strong>Component Predictions:</strong> Output from the constrained AR(1) spline model. Includes hourly predictions, component breakdown by activity type, and daily patterns in weight variation.</p>
-            <a href="component_predictions/prediction_summary.md">View Component Predictions →</a>
+            <a href="component_predictions/prediction_summary_lbs.md">View Component Predictions →</a>
         </div>
 
-        <div class="doc-card">
+        <div class="doc-card" style="border-left-color: #27ae60;">
             <h3>📖 Model Interpretability Report</h3>
-            <p><strong>Constrained AR(1) Spline Model:</strong> Comprehensive interpretability report with model overview, prior specification, posterior parameter tables, MCMC diagnostics, variance decomposition, and key interpretation of fitness effects on weight.</p>
+            <p><strong>Constrained AR(1) Spline Model:</strong> Comprehensive interpretability report with model overview, prior specification, posterior parameter tables, MCMC diagnostics, dynamic variance decomposition, and key interpretation of fitness effects on weight.</p>
             <a href="constrained_ar_model_report/index.html">View Interpretability Report →</a>
-        </div>
-
-        <div class="doc-card">
-            <h3>🌟 Enhanced Model Suite (Master Index)</h3>
-            <p><strong>Complete Analysis Suite:</strong> Central hub for enhanced sensitivity model reports with conservative sampling (adapt_delta=0.99). Includes comprehensive visualizations, time series analysis, and detailed reports. [Previous Model]</p>
-            <a href="enhanced_model_suite/index.html">View Complete Suite →</a>
-        </div>
-
-        <div class="doc-card">
-            <h3>📊 Enhanced Sensitivity Report [Archive]</h3>
-            <p>Detailed analysis of enhanced sensitivity model with parameter estimates, variance decomposition, convergence diagnostics, and model recommendations. (Previous model variant)</p>
-            <a href="enhanced_sensitivity_report/index.html">View Archive Report →</a>
-        </div>
-
-        <div class="doc-card">
-            <h3>📈 Enhanced Model Visualizations [Archive]</h3>
-            <p>Comprehensive visualizations including component time series, convergence diagnostics, parameter distributions, and fitness state evolution. (Previous model variant)</p>
-            <a href="enhanced_model_visualizations/index.html">View Archive Visualizations →</a>
-        </div>
-
-        <div class="doc-card">
-            <h3>🏃 Enhanced Fitness Time Series [Archive]</h3>
-            <p>Enhanced sensitivity model fitness time series with conservative sampling. Shows smooth predictions, component breakdown, and reliable uncertainty quantification from adapt_delta=0.99 sampling. (Previous model variant)</p>
-            <a href="enhanced_fitness_time_series_report/index.html">View Archive Analysis →</a>
-        </div>
-
-        <div class="doc-card">
-            <h3>🔬 Enhanced Model Overview [Archive]</h3>
-            <p>Model overview with technical specifications, sampling configuration, and implementation details for the enhanced sensitivity model. (Previous model variant)</p>
-            <a href="enhanced_model/index.html">View Archive Overview →</a>
         </div>
 
         <div class="doc-card">
@@ -165,17 +135,50 @@
             <p>Analysis of Garmin workout data quality, aggregation methods, and recommendations for modeling. Focuses on strength training data for cross-lagged time-series analysis.</p>
             <a href="workout_data_report.html">View HTML</a>
         </div>
+    </div>
+
+    <h2 style="margin-top: 3rem; color: #2c3e50; border-bottom: 2px solid #95a5a6; padding-bottom: 10px;">📦 Archive &amp; Previous Models</h2>
+    <div class="doc-list">
+        <div class="doc-card">
+            <h3>🌟 Enhanced Model Suite (Master Index)</h3>
+            <p>Central hub for enhanced sensitivity model reports. (Previous Model Variant)</p>
+            <a href="enhanced_model_suite/index.html">View Suite →</a>
+        </div>
+
+        <div class="doc-card">
+            <h3>📊 Enhanced Sensitivity Report</h3>
+            <p>Previous model analysis with detailed parameter estimates, variance decomposition, and diagnostics.</p>
+            <a href="enhanced_sensitivity_report/index.html">View Report →</a>
+        </div>
+
+        <div class="doc-card">
+            <h3>📈 Enhanced Model Visualizations</h3>
+            <p>Visualizations from previous model variant including time series and parameter distributions.</p>
+            <a href="enhanced_model_visualizations/index.html">View Visualizations →</a>
+        </div>
+
+        <div class="doc-card">
+            <h3>🏃 Enhanced Fitness Time Series</h3>
+            <p>Fitness state time series from enhanced sensitivity model with conservative sampling.</p>
+            <a href="enhanced_fitness_time_series_report/index.html">View Time Series →</a>
+        </div>
+
+        <div class="doc-card">
+            <h3>🔬 Enhanced Model Overview</h3>
+            <p>Technical overview from previous enhanced sensitivity model variant.</p>
+            <a href="enhanced_model/index.html">View Overview →</a>
+        </div>
 
         <div class="doc-card">
             <h3>Consolidation Summary</h3>
-            <p>Summary of model and report consolidation focusing on the four-fitness state-space model with baseline fitness equilibrium at 0. Documents the cleanup process and new structure.</p>
+            <p>Summary of model consolidation and cleanup process documentation.</p>
             <a href="model_consolidation_summary.md">View Summary</a>
         </div>
     </div>
 
     <footer>
         <p><strong>Garmin Analysis Project</strong> | Bayesian modeling of health and fitness data</p>
-        <p>Documentation generated: 2026-03-02 | Enhanced model reports consolidated: 2026-03-02 | Project: garmin-analysis-v2</p>
+        <p>Documentation updated: 2026-03-06 | Current model: Constrained AR(1) Spline | Project: garmin-analysis-v2</p>
     </footer>
 </body>
 </html>
