@@ -16,10 +16,68 @@ def load_posterior_metadata(json_file):
         return json.load(f)
 
 
-def generate_html_report(metadata):
+def parse_data_summary_markdown(markdown_file):
+    """Parse data summary from markdown file and extract key statistics."""
+    try:
+        with open(markdown_file, 'r') as f:
+            content = f.read()
+
+        # Extract components and magnitudes from markdown
+        stats = {}
+
+        # Parse key sections
+        lines = content.split('\n')
+        in_magnitudes = False
+        in_key_stats = False
+
+        for i, line in enumerate(lines):
+            # Extract Component Magnitudes
+            if 'Component Magnitudes' in line:
+                in_magnitudes = True
+                continue
+
+            if in_magnitudes and line.strip().startswith('-'):
+                parts = line.strip().split(':')
+                if len(parts) == 2:
+                    key = parts[0].replace('-', '').replace('**', '').strip()
+                    try:
+                        value = float(parts[1].strip())
+                        stats[key.lower()] = value
+                    except:
+                        pass
+
+            if in_magnitudes and line.strip().startswith('##'):
+                in_magnitudes = False
+
+            # Extract Key Statistics
+            if 'Key Statistics' in line:
+                in_key_stats = True
+                continue
+
+            if in_key_stats and line.strip().startswith('-'):
+                if 'range' in line.lower():
+                    parts = line.split(':')
+                    if len(parts) >= 2:
+                        try:
+                            range_val = float(parts[1].split('(')[0].strip())
+                            stats['prediction_range'] = range_val
+                        except:
+                            pass
+
+        return stats
+    except Exception as e:
+        print(f"Warning: Could not parse data summary markdown: {e}")
+        return {}
+
+
+def generate_html_report(metadata, data_summary_stats=None):
     """Generate HTML report from metadata."""
 
     today = datetime.now().strftime("%Y-%m-%d")
+
+    # Use default empty dict if no data summary stats provided
+    if data_summary_stats is None:
+        data_summary_stats = {}
 
     # Extract posteriors
     posteriors = metadata.get('posterior', {})
@@ -540,7 +598,7 @@ def generate_html_report(metadata):
 
             <ol>
                 <li><strong>Fit a trend model:</strong> Add explicit linear trend parameter δ to the weight equation
-                    $$mu[t] = weight\_intercept + \\delta \\cdot (t - 0.5D) / D + \\gamma_s \\cdot strength\_fitness[t] + ...$$
+                    $$\\mu[t] = weight\_intercept + \\delta \\cdot (t - 0.5D) / D + \\gamma_s \\cdot strength\_fitness[t] + ...$$
                 </li>
                 <li><strong>Compare posteriors:</strong> If γ_s shrinks significantly in trend model, the strength effect was confounded with trend</li>
                 <li><strong>Interpret δ:</strong> Estimate of secular weight change (e.g., age-related metabolism slowdown)</li>
@@ -596,8 +654,17 @@ def main():
     print(f"Loading metadata from {metadata_file}...")
     metadata = load_posterior_metadata(metadata_file)
 
+    # Try to load data summary markdown
+    data_summary_file = Path(__file__).parent.parent.parent / 'docs' / 'component_predictions' / 'prediction_summary_lbs.md'
+    data_summary_stats = {}
+    if data_summary_file.exists():
+        print(f"Loading data summary from {data_summary_file}...")
+        data_summary_stats = parse_data_summary_markdown(data_summary_file)
+    else:
+        print(f"Warning: Data summary markdown not found at {data_summary_file}")
+
     print("Generating HTML report...")
-    html_content = generate_html_report(metadata)
+    html_content = generate_html_report(metadata, data_summary_stats)
 
     # Save to file
     output_dir = Path(__file__).parent.parent.parent / 'docs' / 'constrained_ar_model_report'

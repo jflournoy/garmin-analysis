@@ -88,7 +88,7 @@
         <div class="header text-center">
             <h1 class="display-4">Constrained AR(1) Spline Model</h1>
             <p class="lead">Interpretability Report and Model Documentation</p>
-            <p class="mb-0">Generated: 2026-03-05 | Bayesian State-Space Analysis of Garmin Health Data</p>
+            <p class="mb-0">Generated: 2026-03-06 | Bayesian State-Space Analysis of Garmin Health Data</p>
         </div>
 
         <!-- Table of Contents -->
@@ -600,7 +600,7 @@
 
             <ol>
                 <li><strong>Fit a trend model:</strong> Add explicit linear trend parameter δ to the weight equation
-                    $$mu[t] = weight\_intercept + \delta \cdot (t - 0.5D) / D + \gamma_s \cdot strength\_fitness[t] + ...$$
+                    $$\mu[t] = weight\_intercept + \delta \cdot (t - 0.5D) / D + \gamma_s \cdot strength\_fitness[t] + ...$$
                 </li>
                 <li><strong>Compare posteriors:</strong> If γ_s shrinks significantly in trend model, the strength effect was confounded with trend</li>
                 <li><strong>Interpret δ:</strong> Estimate of secular weight change (e.g., age-related metabolism slowdown)</li>
@@ -628,7 +628,7 @@
         <div class="section text-center">
             <hr>
             <p class="text-muted">
-                Generated on 2026-03-05. Model: constrained_ar_spline.
+                Generated on 2026-03-06. Model: constrained_ar_spline.
                 <br>Stan file: <code>weight_state_space_training_decay_aerobic_symmetric_student_ar_spline_constrained.stan</code>
                 <br><a href="../index.html">Back to main index</a>
             </p>
