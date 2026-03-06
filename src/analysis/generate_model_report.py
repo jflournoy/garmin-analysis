@@ -472,28 +472,34 @@ def generate_html_report(metadata):
         <div class="section" id="visualizations">
             <h2>8. Component Visualizations</h2>
 
+            <div class="interpretation-note">
+                <strong>Note on axis scaling:</strong> All visualizations use optimized y-axis scaling for trend readability.
+                Axes are <strong>not forced to include zero</strong> to avoid compression of important patterns and trends.
+                This is appropriate for weight data where absolute values are less important than changes over time.
+            </div>
+
             <h3>Fitness State Time Series with Predictions</h3>
             <div class="visualization">
                 <img src="../component_predictions/component_time_series_noon_lbs.png" alt="Component time series">
-                <p><em>Posterior predictions of weight at noon each day, showing contributions from strength and aerobic fitness.</em></p>
+                <p><em>Posterior predictions of weight at noon each day, showing contributions from strength and aerobic fitness. Y-axis scaled to show temporal trends clearly.</em></p>
             </div>
 
             <h3>Component Contributions at Sample Dates</h3>
             <div class="visualization">
                 <img src="../component_predictions/component_contributions_sample_dates_lbs.png" alt="Component contributions">
-                <p><em>Stacked bar chart showing decomposition of predicted weight into fitness effects and daily variations.</em></p>
+                <p><em>Stacked bar chart showing decomposition of predicted weight into fitness effects and daily variations. Y-axis optimized for component visibility.</em></p>
             </div>
 
             <h3>Daily Patterns Analysis</h3>
             <div class="visualization">
                 <img src="../component_predictions/daily_patterns_analysis_lbs.png" alt="Daily patterns">
-                <p><em>Intraday weight variation patterns captured by the Fourier spline component, showing typical daily cycle.</em></p>
+                <p><em>Intraday weight variation patterns captured by the Fourier spline component, showing typical daily cycle. Y-axis focused on variation magnitude.</em></p>
             </div>
 
             <h3>Total Predictions Heatmap</h3>
             <div class="visualization">
                 <img src="../component_predictions/total_predictions_heatmap_lbs.png" alt="Predictions heatmap">
-                <p><em>Heatmap of predicted weight across all days at different hours, showing daily and longer-term patterns.</em></p>
+                <p><em>Heatmap of predicted weight across all days at different hours, showing daily and longer-term patterns. Color scale optimized for trend visibility.</em></p>
             </div>
         </div>
 
