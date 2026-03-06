@@ -604,25 +604,25 @@ def generate_html_report(metadata, data_summary_stats=None, variance_decomp=None
             <h3>Fitness State Time Series with Predictions</h3>
             <div class="visualization">
                 <img src="../component_predictions/component_time_series_noon_lbs.png" alt="Component time series">
-                <p><em>Posterior predictions of weight at noon each day, showing contributions from strength and aerobic fitness. Y-axis scaled to show temporal trends clearly.</em></p>
+                <p><em>Time series of strength fitness, aerobic fitness, and daily spline components at noon (12:00), showing how each component evolves over the study period. Y-axis scaled to highlight temporal trends rather than absolute values.</em></p>
             </div>
 
             <h3>Component Contributions at Sample Dates</h3>
             <div class="visualization">
                 <img src="../component_predictions/component_contributions_sample_dates_lbs.png" alt="Component contributions">
-                <p><em>Stacked bar chart showing decomposition of predicted weight into fitness effects and daily variations. Y-axis optimized for component visibility.</em></p>
+                <p><em>Intraday weight patterns at 5 sample dates across the study period, showing strength, aerobic, and spline components. Each panel represents a different date to illustrate variation in component contributions over time. Y-axis scaled to reveal component-level variations.</em></p>
             </div>
 
             <h3>Daily Patterns Analysis</h3>
             <div class="visualization">
                 <img src="../component_predictions/daily_patterns_analysis_lbs.png" alt="Daily patterns">
-                <p><em>Intraday weight variation patterns captured by the Fourier spline component, showing typical daily cycle. Y-axis focused on variation magnitude.</em></p>
+                <p><em>Left panel: Mean daily spline component across all days, showing typical intraday weight variation pattern. Right panel: Overlay of individual days (50 sample days shown in gray) against the mean pattern, with actual weight observations (red dots) superimposed to visualize model fit quality.</em></p>
             </div>
 
             <h3>Total Predictions Heatmap</h3>
             <div class="visualization">
                 <img src="../component_predictions/total_predictions_heatmap_lbs.png" alt="Predictions heatmap">
-                <p><em>Heatmap of predicted weight across all days at different hours, showing daily and longer-term patterns. Color scale optimized for trend visibility.</em></p>
+                <p><em>Heatmap showing total predicted weight values (intercept + strength + aerobic + spline) across all days (x-axis) and hours (y-axis). Red diverging colormap highlights deviations from mean weight. Red dots mark actual weight measurements. Year labels on x-axis aid temporal navigation.</em></p>
             </div>
         </div>
 
