@@ -122,20 +122,28 @@ def run_trend_model(stan_data):
         return None
 
     print("Running MCMC sampling...")
-    fit = model.sample(
-        data=stan_data,
-        chains=4,
-        parallel_chains=4,
-        iter_warmup=500,
-        iter_sampling=500,
-        seed=12345,
-        adapt_delta=0.95,
-        max_treedepth=12,
-        show_console=False,
-        show_progress=True
-    )
+    try:
+        fit = model.sample(
+            data=stan_data,
+            chains=4,
+            parallel_chains=4,
+            iter_warmup=500,
+            iter_sampling=500,
+            seed=12345,
+            adapt_delta=0.95,
+            max_treedepth=12,
+            show_console=False,
+            show_progress=True
+        )
 
-    return fit
+        # Check for convergence warnings
+        if fit.diagnose() is not None:
+            print("⚠ Warning: Convergence issues detected in trend model sampling")
+
+        return fit
+    except Exception as e:
+        print(f"✗ Trend model sampling failed: {e}")
+        return None
 
 
 def load_original_model_fit(stan_data):
@@ -154,20 +162,28 @@ def load_original_model_fit(stan_data):
         return None
 
     print("Running MCMC sampling...")
-    fit = model.sample(
-        data=stan_data,
-        chains=4,
-        parallel_chains=4,
-        iter_warmup=500,
-        iter_sampling=500,
-        seed=12345,
-        adapt_delta=0.95,
-        max_treedepth=12,
-        show_console=False,
-        show_progress=True
-    )
+    try:
+        fit = model.sample(
+            data=stan_data,
+            chains=4,
+            parallel_chains=4,
+            iter_warmup=500,
+            iter_sampling=500,
+            seed=12345,
+            adapt_delta=0.95,
+            max_treedepth=12,
+            show_console=False,
+            show_progress=True
+        )
 
-    return fit
+        # Check for convergence warnings
+        if fit.diagnose() is not None:
+            print("⚠ Warning: Convergence issues detected in original model sampling")
+
+        return fit
+    except Exception as e:
+        print(f"✗ Original model sampling failed: {e}")
+        return None
 
 
 def extract_posteriors(fit, model_name=""):
@@ -182,22 +198,29 @@ def extract_posteriors(fit, model_name=""):
     for param in params:
         if param in summaries.index:
             row = summaries.loc[param]
-            posteriors[param] = {
-                'mean': float(row['Mean']),
-                'sd': float(row['StdDev']),
-                'lower_ci': float(row['2.5%']),
-                'upper_ci': float(row['97.5%']),
-            }
+            try:
+                posteriors[param] = {
+                    'mean': float(row['Mean']),
+                    'sd': float(row['StdDev']),
+                    'lower_ci': float(row['2.5%']) if '2.5%' in row.index else float('nan'),
+                    'upper_ci': float(row['97.5%']) if '97.5%' in row.index else float('nan'),
+                }
+            except (KeyError, ValueError) as e:
+                print(f"  Warning: Could not extract posterior for {param}: {e}")
+                continue
 
     # If trend parameter exists, add it
     if 'delta' in summaries.index:
         row = summaries.loc['delta']
-        posteriors['delta'] = {
-            'mean': float(row['Mean']),
-            'sd': float(row['StdDev']),
-            'lower_ci': float(row['2.5%']),
-            'upper_ci': float(row['97.5%']),
-        }
+        try:
+            posteriors['delta'] = {
+                'mean': float(row['Mean']),
+                'sd': float(row['StdDev']),
+                'lower_ci': float(row['2.5%']) if '2.5%' in row.index else float('nan'),
+                'upper_ci': float(row['97.5%']) if '97.5%' in row.index else float('nan'),
+            }
+        except (KeyError, ValueError) as e:
+            print(f"  Warning: Could not extract posterior for delta: {e}")
 
     return posteriors
 
@@ -340,71 +363,83 @@ def main():
 
     fit_trend = run_trend_model(stan_data)
     if fit_trend is None:
-        print("Failed to fit trend model")
-        sys.exit(1)
-
-    # Extract posteriors
-    posteriors_no_trend = extract_posteriors(fit_no_trend, "no-trend")
-    posteriors_trend = extract_posteriors(fit_trend, "trend")
-
-    # Print comparison table
-    print_comparison_table(posteriors_no_trend, posteriors_trend)
-
-    # Interpretation guidance
-    print("\n" + "="*60)
-    print("INTERPRETATION GUIDANCE")
-    print("="*60)
-
-    if 'delta' in posteriors_trend:
-        delta_mean = posteriors_trend['delta']['mean']
-        delta_lower = posteriors_trend['delta']['lower_ci']
-        delta_upper = posteriors_trend['delta']['upper_ci']
-
-        print(f"\nLinear Trend Parameter (δ):")
-        print(f"  Mean: {delta_mean:.4f} standardized units over full time range")
-        print(f"  95% CI: [{delta_lower:.4f}, {delta_upper:.4f}]")
-
-        # Convert to lbs (roughly: 1 std unit ≈ 2.77 lbs over full range)
-        lbs_over_full_range = delta_mean * 2.77
-        lbs_per_year = lbs_over_full_range / 2.5  # ~2.5 years of data
-
-        print(f"  Implied: {lbs_over_full_range:.2f} lbs over full time range (~2.5 years)")
-        print(f"           or {lbs_per_year:.2f} lbs/year")
-
-        if abs(delta_lower) < 0.01 and abs(delta_upper) < 0.01:
-            print(f"  → NO meaningful secular trend detected")
-        elif delta_lower > 0:
-            print(f"  → SIGNIFICANT upward trend in weight over time")
-        elif delta_upper < 0:
-            print(f"  → SIGNIFICANT downward trend in weight over time")
-        else:
-            print(f"  → UNCERTAIN trend (CI includes zero)")
-
-    # Compare gamma_s
-    gamma_s_no_trend = posteriors_no_trend['gamma_s']
-    gamma_s_trend = posteriors_trend['gamma_s']
-
-    print(f"\nStrength Effect (γ_s) Comparison:")
-    print(f"  No-trend model: {gamma_s_no_trend['mean']:.4f} [{gamma_s_no_trend['lower_ci']:.4f}, {gamma_s_no_trend['upper_ci']:.4f}]")
-    print(f"  Trend model:    {gamma_s_trend['mean']:.4f} [{gamma_s_trend['lower_ci']:.4f}, {gamma_s_trend['upper_ci']:.4f}]")
-
-    change_in_mean = gamma_s_trend['mean'] - gamma_s_no_trend['mean']
-    pct_change = 100 * change_in_mean / gamma_s_no_trend['mean'] if gamma_s_no_trend['mean'] != 0 else 0
-
-    print(f"  Change: {change_in_mean:+.4f} ({pct_change:+.1f}%)")
-
-    if abs(change_in_mean) < 0.05:
-        print(f"  → Strength effect is ROBUST to trend adjustment (effect not confounded)")
-    elif change_in_mean < -0.05:
-        print(f"  → Strength effect SHRINKS significantly in trend model")
-        print(f"     This suggests trend was partially confounded with strength effect")
+        print("\n⚠ Warning: Trend model fitting failed or did not converge properly")
+        print("Continuing with no-trend model results only...")
+        posteriors_trend = None
     else:
-        print(f"  → Strength effect INCREASES in trend model (unexpected)")
+        # Extract posteriors from trend model if successful
+        posteriors_trend = extract_posteriors(fit_trend, "trend")
 
-    # Generate plots and comparisons
-    plot_gamma_s_comparison(fit_no_trend, fit_trend)
-    compute_loo_comparison(fit_no_trend, fit_trend)
-    save_comparison_json(posteriors_no_trend, posteriors_trend, stan_data)
+    # Extract posteriors from no-trend model (always needed)
+    posteriors_no_trend = extract_posteriors(fit_no_trend, "no-trend")
+
+    # Print comparison table if trend model succeeded
+    if posteriors_trend is not None:
+        print_comparison_table(posteriors_no_trend, posteriors_trend)
+
+        # Interpretation guidance
+        print("\n" + "="*60)
+        print("INTERPRETATION GUIDANCE")
+        print("="*60)
+
+        if 'delta' in posteriors_trend:
+            delta_mean = posteriors_trend['delta']['mean']
+            delta_lower = posteriors_trend['delta']['lower_ci']
+            delta_upper = posteriors_trend['delta']['upper_ci']
+
+            print(f"\nLinear Trend Parameter (δ):")
+            print(f"  Mean: {delta_mean:.4f} standardized units over full time range")
+            print(f"  95% CI: [{delta_lower:.4f}, {delta_upper:.4f}]")
+
+            # Convert to lbs (roughly: 1 std unit ≈ 2.77 lbs over full range)
+            lbs_over_full_range = delta_mean * 2.77
+            lbs_per_year = lbs_over_full_range / 2.5  # ~2.5 years of data
+
+            print(f"  Implied: {lbs_over_full_range:.2f} lbs over full time range (~2.5 years)")
+            print(f"           or {lbs_per_year:.2f} lbs/year")
+
+            if abs(delta_lower) < 0.01 and abs(delta_upper) < 0.01:
+                print(f"  → NO meaningful secular trend detected")
+            elif delta_lower > 0:
+                print(f"  → SIGNIFICANT upward trend in weight over time")
+            elif delta_upper < 0:
+                print(f"  → SIGNIFICANT downward trend in weight over time")
+            else:
+                print(f"  → UNCERTAIN trend (CI includes zero)")
+
+        # Compare gamma_s
+        gamma_s_no_trend = posteriors_no_trend['gamma_s']
+        gamma_s_trend = posteriors_trend['gamma_s']
+
+        print(f"\nStrength Effect (γ_s) Comparison:")
+        print(f"  No-trend model: {gamma_s_no_trend['mean']:.4f} [{gamma_s_no_trend['lower_ci']:.4f}, {gamma_s_no_trend['upper_ci']:.4f}]")
+        print(f"  Trend model:    {gamma_s_trend['mean']:.4f} [{gamma_s_trend['lower_ci']:.4f}, {gamma_s_trend['upper_ci']:.4f}]")
+
+        change_in_mean = gamma_s_trend['mean'] - gamma_s_no_trend['mean']
+        pct_change = 100 * change_in_mean / gamma_s_no_trend['mean'] if gamma_s_no_trend['mean'] != 0 else 0
+
+        print(f"  Change: {change_in_mean:+.4f} ({pct_change:+.1f}%)")
+
+        if abs(change_in_mean) < 0.05:
+            print(f"  → Strength effect is ROBUST to trend adjustment (effect not confounded)")
+        elif change_in_mean < -0.05:
+            print(f"  → Strength effect SHRINKS significantly in trend model")
+            print(f"     This suggests trend was partially confounded with strength effect")
+        else:
+            print(f"  → Strength effect INCREASES in trend model (unexpected)")
+
+        # Generate plots and comparisons
+        plot_gamma_s_comparison(fit_no_trend, fit_trend)
+        compute_loo_comparison(fit_no_trend, fit_trend)
+        save_comparison_json(posteriors_no_trend, posteriors_trend, stan_data)
+    else:
+        print("\n" + "="*60)
+        print("NO-TREND MODEL RESULTS ONLY")
+        print("="*60)
+        print("\nUnable to fit trend model. Showing base model results:")
+        print(f"\nStrength Effect (γ_s):")
+        gamma_s_no_trend = posteriors_no_trend['gamma_s']
+        print(f"  {gamma_s_no_trend['mean']:.4f} [{gamma_s_no_trend['lower_ci']:.4f}, {gamma_s_no_trend['upper_ci']:.4f}]")
 
     print("\n" + "="*60)
     print("✓ Trend model comparison complete")
