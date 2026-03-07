@@ -323,7 +323,9 @@ def create_component_visualizations(components, df_weight, dates, hours, output_
     for day_idx in day_indices:
         ax.plot(hours_np, mean_total[day_idx, :], 'gray', alpha=0.1, linewidth=0.5)
 
-    ax.plot(hours_np, mean_daily, 'b-', linewidth=3, label='Mean Pattern')
+    # Use total mean pattern (not spline-only) for right panel
+    mean_total_daily = mean_total.mean(axis=0)
+    ax.plot(hours_np, mean_total_daily, 'b-', linewidth=3, label='Mean Total Pattern')
 
     # Add all actual weight data
     ax.scatter(df_weight['hour_of_day'], df_weight['weight_lbs'],
@@ -339,7 +341,7 @@ def create_component_visualizations(components, df_weight, dates, hours, output_
     all_y_data = []
     for day_idx in day_indices:
         all_y_data.append(mean_total[day_idx, :])
-    all_y_data.append(mean_daily)
+    all_y_data.append(mean_total_daily)
     all_y_data.append(df_weight['weight_lbs'].values)
 
     all_y_data_flat = np.concatenate([d.flatten() for d in all_y_data])
@@ -420,14 +422,17 @@ def main():
     # Load weight data
     print("Loading weight data...")
     data_dir = "data"
-    df_weight = load_weight_data(data_dir)
-
-    # Prepare weight data
-    df_weight['date'] = df_weight['timestamp'].dt.date
-    df_weight['hour_of_day'] = df_weight['timestamp'].dt.hour + df_weight['timestamp'].dt.minute / 60.0
-
-    print(f"  ✓ Loaded {len(df_weight)} weight measurements")
-    print(f"  Weight range: {df_weight['weight_lbs'].min():.1f} to {df_weight['weight_lbs'].max():.1f} lbs")
+    try:
+        df_weight = load_weight_data(data_dir)
+        # Prepare weight data
+        df_weight['date'] = df_weight['timestamp'].dt.date
+        df_weight['hour_of_day'] = df_weight['timestamp'].dt.hour + df_weight['timestamp'].dt.minute / 60.0
+        print(f"  ✓ Loaded {len(df_weight)} weight measurements")
+        print(f"  Weight range: {df_weight['weight_lbs'].min():.1f} to {df_weight['weight_lbs'].max():.1f} lbs")
+    except FileNotFoundError as e:
+        print(f"  ⚠ Warning: Weight data not found ({e})")
+        print(f"  Proceeding without actual weight measurements (will not overlay on plots)")
+        df_weight = None
 
     # Load component predictions
     try:
