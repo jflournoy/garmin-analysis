@@ -128,12 +128,15 @@ def create_component_visualizations(components, df_weight, dates, hours, output_
     ]
 
     # Prepare actual weight data for noon (filter weights measured around noon)
-    noon_start = 11.5  # 11:30
-    noon_end = 12.5    # 12:30
-    df_weight_noon = df_weight[(df_weight['hour_of_day'] >= noon_start) &
-                               (df_weight['hour_of_day'] <= noon_end)].copy()
-    df_weight_noon['timestamp'] = pd.to_datetime(df_weight_noon['date'].astype(str) + ' ' +
-                                                 df_weight_noon['hour_of_day'].astype(str).str.replace('.', ':'))
+    if df_weight is not None:
+        noon_start = 11.5  # 11:30
+        noon_end = 12.5    # 12:30
+        df_weight_noon = df_weight[(df_weight['hour_of_day'] >= noon_start) &
+                                   (df_weight['hour_of_day'] <= noon_end)].copy()
+        df_weight_noon['timestamp'] = pd.to_datetime(df_weight_noon['date'].astype(str) + ' ' +
+                                                     df_weight_noon['hour_of_day'].astype(str).str.replace('.', ':'))
+    else:
+        df_weight_noon = pd.DataFrame()  # Empty dataframe
 
     for idx, (component_name, title) in enumerate(zip(component_names, titles)):
         ax = axes[idx]
@@ -329,8 +332,9 @@ def create_component_visualizations(components, df_weight, dates, hours, output_
     ax.plot(hours_np, mean_total_daily, 'b-', linewidth=3, label='Mean Total Pattern')
 
     # Add all actual weight data
-    ax.scatter(df_weight['hour_of_day'], df_weight['weight_lbs'],
-              alpha=0.3, s=20, color='red', label='Actual Weight')
+    if df_weight is not None and len(df_weight) > 0:
+        ax.scatter(df_weight['hour_of_day'], df_weight['weight_lbs'],
+                  alpha=0.3, s=20, color='red', label='Actual Weight')
 
     ax.set_xlabel('Hour of Day')
     ax.set_ylabel('Weight (lbs)' if 'lbs' in suffix else 'Standardized Weight')
@@ -343,7 +347,8 @@ def create_component_visualizations(components, df_weight, dates, hours, output_
     for day_idx in day_indices:
         all_y_data.append(mean_total[day_idx, :])
     all_y_data.append(mean_total_daily)
-    all_y_data.append(df_weight['weight_lbs'].values)
+    if df_weight is not None and len(df_weight) > 0:
+        all_y_data.append(df_weight['weight_lbs'].values)
 
     all_y_data_flat = np.concatenate([d.flatten() for d in all_y_data])
 
@@ -363,43 +368,49 @@ def create_component_visualizations(components, df_weight, dates, hours, output_
     fig, ax = plt.subplots(figsize=(10, 8))
 
     # Get predictions at actual measurement times
-    predicted_weights = []
-    actual_weights = []
+    if df_weight is not None and len(df_weight) > 0:
+        predicted_weights = []
+        actual_weights = []
 
-    for _, row in df_weight.iterrows():
-        # Find closest date and hour
-        date_diffs = np.abs(dates_np - pd.Timestamp(row['date']).to_datetime64())
-        date_idx = np.argmin(date_diffs)
+        for _, row in df_weight.iterrows():
+            # Find closest date and hour
+            date_diffs = np.abs(dates_np - pd.Timestamp(row['date']).to_datetime64())
+            date_idx = np.argmin(date_diffs)
 
-        hour_diffs = np.abs(hours_np - row['hour_of_day'])
-        hour_idx = np.argmin(hour_diffs)
+            hour_diffs = np.abs(hours_np - row['hour_of_day'])
+            hour_idx = np.argmin(hour_diffs)
 
-        predicted_weight = mean_total[date_idx, hour_idx]
-        actual_weight = row['weight_lbs']
+            predicted_weight = mean_total[date_idx, hour_idx]
+            actual_weight = row['weight_lbs']
 
-        predicted_weights.append(predicted_weight)
-        actual_weights.append(actual_weight)
+            predicted_weights.append(predicted_weight)
+            actual_weights.append(actual_weight)
 
-    ax.scatter(actual_weights, predicted_weights, alpha=0.6, s=20)
+        ax.scatter(actual_weights, predicted_weights, alpha=0.6, s=20)
 
-    # Add diagonal line
-    min_val = min(min(actual_weights), min(predicted_weights))
-    max_val = max(max(actual_weights), max(predicted_weights))
-    ax.plot([min_val, max_val], [min_val, max_val], 'r--', alpha=0.5, label='Perfect Prediction')
+        # Add diagonal line
+        min_val = min(min(actual_weights), min(predicted_weights))
+        max_val = max(max(actual_weights), max(predicted_weights))
+        ax.plot([min_val, max_val], [min_val, max_val], 'r--', alpha=0.5, label='Perfect Prediction')
 
-    ax.set_xlabel('Actual Weight (lbs)' if 'lbs' in suffix else 'Actual Weight (std)')
-    ax.set_ylabel('Predicted Weight (lbs)' if 'lbs' in suffix else 'Predicted Weight (std)')
-    ax.set_title('Prediction vs Actual Weight')
+        ax.set_xlabel('Actual Weight (lbs)' if 'lbs' in suffix else 'Actual Weight (std)')
+        ax.set_ylabel('Predicted Weight (lbs)' if 'lbs' in suffix else 'Predicted Weight (std)')
+        ax.set_title('Prediction vs Actual Weight')
 
-    # Add correlation coefficient
-    correlation = np.corrcoef(actual_weights, predicted_weights)[0, 1]
-    ax.text(0.05, 0.95, f'Correlation: {correlation:.3f}',
-            transform=ax.transAxes, fontsize=12,
-            verticalalignment='top',
-            bbox=dict(boxstyle='round', facecolor='wheat', alpha=0.5))
+        # Add correlation coefficient
+        correlation = np.corrcoef(actual_weights, predicted_weights)[0, 1]
+        ax.text(0.05, 0.95, f'Correlation: {correlation:.3f}',
+                transform=ax.transAxes, fontsize=12,
+                verticalalignment='top',
+                bbox=dict(boxstyle='round', facecolor='wheat', alpha=0.5))
 
-    ax.legend()
-    ax.grid(True, alpha=0.3)
+        ax.legend()
+        ax.grid(True, alpha=0.3)
+    else:
+        ax.text(0.5, 0.5, 'No weight data available',
+                ha='center', va='center', fontsize=14,
+                transform=ax.transAxes)
+        ax.set_title('Prediction vs Actual Weight (No Data)')
 
     plt.tight_layout()
     output_filename = f'prediction_vs_actual_scatter{suffix}.png'
