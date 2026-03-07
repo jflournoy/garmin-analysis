@@ -116,14 +116,15 @@ def create_component_visualizations(components, df_weight, dates, hours, output_
         noon_idx = noon_idx[0]
 
     # 1. Time series of each component at noon (12:00) with actual weight data
-    fig, axes = plt.subplots(1, 3, figsize=(18, 5))
+    fig, axes = plt.subplots(2, 2, figsize=(16, 10))
     axes = axes.flatten()
 
-    component_names = ['strength', 'aerobic', 'spline']
+    component_names = ['strength', 'aerobic', 'spline', 'total']
     titles = [
         'Strength Fitness Component',
         'Aerobic Fitness Component',
-        'Daily Spline Component'
+        'Daily Spline Component',
+        'Total Prediction (All Components)'
     ]
 
     # Prepare actual weight data for noon (filter weights measured around noon)
