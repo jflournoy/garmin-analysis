@@ -1,0 +1,184 @@
+{
+  "data_summary": {
+    "D": 966,
+    "N_weight": 159
+  },
+  "posteriors_no_trend": {
+    "rho": {
+      "mean": 0.278369,
+      "sd": 0.0737057,
+      "lower_ci": NaN,
+      "upper_ci": NaN
+    },
+    "sigma_epsilon": {
+      "mean": 0.359877,
+      "sd": 0.038514,
+      "lower_ci": NaN,
+      "upper_ci": NaN
+    },
+    "gamma_s": {
+      "mean": 0.147222,
+      "sd": 0.0971883,
+      "lower_ci": NaN,
+      "upper_ci": NaN
+    },
+    "gamma_a": {
+      "mean": -0.0925675,
+      "sd": 0.114327,
+      "lower_ci": NaN,
+      "upper_ci": NaN
+    },
+    "weight_intercept": {
+      "mean": -1.91414,
+      "sd": 0.165137,
+      "lower_ci": NaN,
+      "upper_ci": NaN
+    },
+    "nu": {
+      "mean": 13.0578,
+      "sd": 9.91738,
+      "lower_ci": NaN,
+      "upper_ci": NaN
+    },
+    "sigma_w": {
+      "mean": 0.138358,
+      "sd": 0.0591063,
+      "lower_ci": NaN,
+      "upper_ci": NaN
+    },
+    "sigma_fourier": {
+      "mean": 0.207614,
+      "sd": 0.139018,
+      "lower_ci": NaN,
+      "upper_ci": NaN
+    },
+    "beta_s": {
+      "mean": 0.331631,
+      "sd": 0.268171,
+      "lower_ci": NaN,
+      "upper_ci": NaN
+    },
+    "beta_a": {
+      "mean": 0.302465,
+      "sd": 0.308239,
+      "lower_ci": NaN,
+      "upper_ci": NaN
+    },
+    "alpha_d_s": {
+      "mean": 0.994962,
+      "sd": 0.000461662,
+      "lower_ci": NaN,
+      "upper_ci": NaN
+    },
+    "alpha_m_s": {
+      "mean": 0.50172,
+      "sd": 0.121988,
+      "lower_ci": NaN,
+      "upper_ci": NaN
+    },
+    "alpha_d_a": {
+      "mean": 0.814261,
+      "sd": 0.0778052,
+      "lower_ci": NaN,
+      "upper_ci": NaN
+    },
+    "alpha_m_a": {
+      "mean": 0.505325,
+      "sd": 0.115972,
+      "lower_ci": NaN,
+      "upper_ci": NaN
+    }
+  },
+  "posteriors_trend": {
+    "rho": {
+      "mean": 0.264663,
+      "sd": 0.0873662,
+      "lower_ci": NaN,
+      "upper_ci": NaN
+    },
+    "sigma_epsilon": {
+      "mean": 0.376767,
+      "sd": 0.0389328,
+      "lower_ci": NaN,
+      "upper_ci": NaN
+    },
+    "gamma_s": {
+      "mean": 0.153708,
+      "sd": 0.0952562,
+      "lower_ci": NaN,
+      "upper_ci": NaN
+    },
+    "gamma_a": {
+      "mean": -0.0873428,
+      "sd": 0.12651,
+      "lower_ci": NaN,
+      "upper_ci": NaN
+    },
+    "weight_intercept": {
+      "mean": -1.91533,
+      "sd": 0.27368,
+      "lower_ci": NaN,
+      "upper_ci": NaN
+    },
+    "nu": {
+      "mean": 13.5329,
+      "sd": 10.0589,
+      "lower_ci": NaN,
+      "upper_ci": NaN
+    },
+    "sigma_w": {
+      "mean": 0.0947233,
+      "sd": 0.0762403,
+      "lower_ci": NaN,
+      "upper_ci": NaN
+    },
+    "sigma_fourier": {
+      "mean": 0.179622,
+      "sd": 0.108443,
+      "lower_ci": NaN,
+      "upper_ci": NaN
+    },
+    "beta_s": {
+      "mean": 0.307188,
+      "sd": 0.242734,
+      "lower_ci": NaN,
+      "upper_ci": NaN
+    },
+    "beta_a": {
+      "mean": 0.332555,
+      "sd": 0.337076,
+      "lower_ci": NaN,
+      "upper_ci": NaN
+    },
+    "alpha_d_s": {
+      "mean": 0.994789,
+      "sd": 0.000810268,
+      "lower_ci": NaN,
+      "upper_ci": NaN
+    },
+    "alpha_m_s": {
+      "mean": 0.501874,
+      "sd": 0.112638,
+      "lower_ci": NaN,
+      "upper_ci": NaN
+    },
+    "alpha_d_a": {
+      "mean": 0.809664,
+      "sd": 0.0792834,
+      "lower_ci": NaN,
+      "upper_ci": NaN
+    },
+    "alpha_m_a": {
+      "mean": 0.497812,
+      "sd": 0.119347,
+      "lower_ci": NaN,
+      "upper_ci": NaN
+    },
+    "delta": {
+      "mean": 0.0340393,
+      "sd": 0.645904,
+      "lower_ci": NaN,
+      "upper_ci": NaN
+    }
+  }
+}

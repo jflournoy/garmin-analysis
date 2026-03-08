@@ -2,6 +2,7 @@
         fit-model predictions plots reports deploy \
         fit-base fit-trend \
         report-base report-trend \
+        metadata metadata-trend \
         pipeline pipeline-base pipeline-trend
 
 # Color output
@@ -29,6 +30,10 @@ help:
 	@echo ""
 	@echo "  make report-base           Generate base model report"
 	@echo "  make report-trend          Generate trend model report"
+	@echo ""
+	@echo "$(GREEN)Utilities:$(NC)"
+	@echo "  make metadata              Extract base model posterior metadata"
+	@echo "  make metadata-trend         Generate trend model metadata from comparison"
 	@echo ""
 	@echo "$(GREEN)Deployment:$(NC)"
 	@echo "  make deploy                Deploy reports to docs/"
@@ -115,6 +120,11 @@ metadata:
 	@echo "$(BLUE)Extracting posterior metadata...$(NC)"
 	uv run python src/analysis/extract_posterior_metadata.py
 	@echo "$(GREEN)✓ Metadata extracted$(NC)"
+
+metadata-trend:
+	@echo "$(BLUE)Generating trend model metadata...$(NC)"
+	uv run python src/analysis/generate_trend_metadata.py
+	@echo "$(GREEN)✓ Trend metadata generated$(NC)"
 
 # ============================================================================
 # DEPLOYMENT
