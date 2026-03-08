@@ -106,6 +106,61 @@ def prepare_data_with_4h_intervals():
     return stan_data, df_weight, df_daily, weight_mean, weight_std
 
 
+def _extract_and_save_trend_metadata(fit):
+    """Extract posterior metadata from trend model fit and save for report generation."""
+    try:
+        summaries = fit.summary()
+
+        # Parameters to extract (including delta for trend model)
+        scalar_params = [
+            'delta', 'rho', 'sigma_epsilon', 'gamma_s', 'gamma_a', 'weight_intercept', 'nu',
+            'sigma_w', 'sigma_fourier', 'beta_s', 'beta_a',
+            'alpha_d_s', 'alpha_m_s', 'alpha_d_a', 'alpha_m_a'
+        ]
+
+        posterior_metadata = {}
+
+        # Extract each parameter
+        for param in scalar_params:
+            if param in summaries.index:
+                row = summaries.loc[param]
+                posterior_metadata[param] = {
+                    'mean': float(row['Mean']),
+                    'sd': float(row['StdDev']),
+                    'lower_ci': float(row['2.5%']) if '2.5%' in row.index else float('nan'),
+                    'upper_ci': float(row['97.5%']) if '97.5%' in row.index else float('nan'),
+                    'rhat': float(row['R_hat']) if not np.isnan(row['R_hat']) else None,
+                    'ess_bulk': float(row['Bulk_ESS']) if not np.isnan(row['Bulk_ESS']) else None,
+                    'ess_tail': float(row['Tail_ESS']) if not np.isnan(row['Tail_ESS']) else None,
+                }
+
+        # MCMC diagnostics
+        diagnostics = {
+            'num_chains': fit.num_chains,
+            'num_draws_sampling': fit.num_draws_sampling,
+            'num_draws_warmup': fit.num_draws_warmup,
+        }
+
+        metadata = {
+            'posterior': posterior_metadata,
+            'diagnostics': diagnostics,
+        }
+
+        # Save to JSON in docs directory
+        output_dir = Path(__file__).parent.parent.parent / 'docs' / 'component_predictions'
+        output_dir.mkdir(parents=True, exist_ok=True)
+        output_file = output_dir / 'posterior_metadata_trend.json'
+
+        with open(output_file, 'w') as f:
+            json.dump(metadata, f, indent=2)
+
+        print(f"\n✓ Extracted trend model posterior metadata")
+        print(f"  Output: {output_file}")
+
+    except Exception as e:
+        print(f"\n⚠ Warning: Could not extract trend metadata: {e}")
+
+
 def run_trend_model(stan_data):
     """Run the trend model."""
     print("\n" + "="*60)
@@ -123,6 +178,10 @@ def run_trend_model(stan_data):
 
     print("Running MCMC sampling...")
     try:
+        # Set output directory for chain files
+        output_dir = Path(__file__).parent.parent.parent / 'output' / 'trend_model_current'
+        output_dir.mkdir(parents=True, exist_ok=True)
+
         fit = model.sample(
             data=stan_data,
             chains=4,
@@ -132,6 +191,7 @@ def run_trend_model(stan_data):
             seed=12345,
             adapt_delta=0.95,
             max_treedepth=12,
+            output_dir=str(output_dir),
             show_console=False,
             show_progress=True
         )
@@ -139,6 +199,9 @@ def run_trend_model(stan_data):
         # Check for convergence warnings
         if fit.diagnose() is not None:
             print("⚠ Warning: Convergence issues detected in trend model sampling")
+
+        # Extract and save metadata for report generation
+        _extract_and_save_trend_metadata(fit)
 
         return fit
     except Exception as e:
