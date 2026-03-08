@@ -37,7 +37,8 @@ make report-base            # Generate base model report only
 make report-trend           # Generate trend model report only
 
 # Utilities
-make metadata               # Extract posterior metadata from model
+make metadata               # Extract posterior metadata from base model
+make metadata-trend         # Generate trend model metadata from comparison results
 make deploy                 # Deploy reports (same as reports)
 make status                 # Show project status overview
 ```
