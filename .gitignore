@@ -14,7 +14,9 @@
 output/
 
 # Experimental output directories (generated analysis artifacts)
-docs/component_predictions/
+docs/component_predictions/*.csv
+docs/component_predictions/*.json
+docs/component_predictions/*.md
 docs/constrained_ar_analysis/
 docs/enhanced_*/
 
