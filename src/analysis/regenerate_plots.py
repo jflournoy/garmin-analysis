@@ -127,14 +127,15 @@ def create_component_visualizations(components, df_weight, dates, hours, output_
         'Total Prediction (All Components)'
     ]
 
-    # Prepare actual weight data for noon (filter weights measured around noon)
+    # Prepare actual weight data - use typical measurement window (afternoon)
+    # Most weight measurements occur in afternoon/evening, use flexible window
     if df_weight is not None:
-        noon_start = 11.5  # 11:30
-        noon_end = 12.5    # 12:30
-        df_weight_noon = df_weight[(df_weight['hour_of_day'] >= noon_start) &
-                                   (df_weight['hour_of_day'] <= noon_end)].copy()
-        df_weight_noon['timestamp'] = pd.to_datetime(df_weight_noon['date'].astype(str) + ' ' +
-                                                     df_weight_noon['hour_of_day'].astype(str).str.replace('.', ':'))
+        # Use 1:00 PM - 8:00 PM window where most measurements occur
+        afternoon_start = 13.0  # 1:00 PM
+        afternoon_end = 20.0    # 8:00 PM
+        df_weight_noon = df_weight[(df_weight['hour_of_day'] >= afternoon_start) &
+                                   (df_weight['hour_of_day'] <= afternoon_end)].copy()
+        # Use existing timestamp (already properly formatted)
     else:
         df_weight_noon = pd.DataFrame()  # Empty dataframe
 
@@ -151,11 +152,11 @@ def create_component_visualizations(components, df_weight, dates, hours, output_
         if len(df_weight_noon) > 0:
             ax.scatter(df_weight_noon['timestamp'], df_weight_noon['weight_lbs'],
                       alpha=0.6, s=30, color='red', edgecolor='black', linewidth=0.5,
-                      label='Actual Weight (noon)')
+                      label='Actual Weight (afternoon)')
 
         ax.set_xlabel('Date')
         ax.set_ylabel('Weight (lbs)' if 'lbs' in suffix else 'Standardized Weight')
-        ax.set_title(f'{title} at 12:00')
+        ax.set_title(f'{title} (1-8 PM)')
         ax.legend()
         ax.grid(True, alpha=0.3)
 
