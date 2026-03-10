@@ -23,6 +23,9 @@
     <!-- Load MathJax -->
     <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" async></script>
 
+    <!-- Simple Analytics -->
+    <script async src="https://scripts.simpleanalyticscdn.com/latest.js"></script>
+
     <!-- Basic styling -->
     <style>
         body {
@@ -92,8 +95,6 @@
             font-size: 0.9em;
         }
     </style>
-    <!-- Simple Analytics -->
-    <script async src="https://scripts.simpleanalyticscdn.com/latest.js"></script>
 </head>
 <body>
     <h1>CLAUDE.md - Project AI Guidelines</h1>
@@ -133,8 +134,9 @@
 <li><code>uv add &lt;package&gt;</code> - Add dependencies</li>
 <li><code>uv run python script.py</code> - Run Python scripts</li>
 <li><code>uv sync</code> - Sync dependencies</li>
+<li>Never use raw <code>python</code> or <code>pip</code> commands</li>
 <li>
-<p>Never use raw <code>python</code> or <code>pip</code> commands</p>
+<p><strong>Note</strong>: When running analysis scripts, you may see a warning about VIRTUAL_ENV mismatch if an external conda environment is active. This warning can be ignored as uv uses the project's <code>.venv</code>.</p>
 </li>
 <li>
 <p><strong>JavaScript/Node</strong>: Use <code>npm</code> for package management</p>
@@ -177,6 +179,36 @@
 </ol>
 <h2>Critical Instructions</h2>
 <p><strong>ALWAYS use <code>date</code> command for dates</strong> - Never assume or guess dates. Always run <code>date "+%Y-%m-%d"</code> when you need the current date for documentation, commits, or any other purpose.</p>
+<h2>Bayesian Analysis Principles</h2>
+<p><strong>CRITICAL: This is a Bayesian analysis project, not frequentist/NHST:</strong></p>
+<ol>
+<li>
+<p><strong>We do NOT do null hypothesis significance testing (NHST)</strong> - Avoid phrases like "statistically significant", "p-value", "reject the null", etc.</p>
+</li>
+<li>
+<p><strong>We work with posterior distributions</strong> - Report posterior means, credible intervals (e.g., 90% or 95% CI), and visualize full posterior distributions.</p>
+</li>
+<li>
+<p><strong>We interpret credible intervals</strong> - A 95% credible interval means there's a 95% probability the parameter lies within that interval given the data and prior.</p>
+</li>
+<li>
+<p><strong>We consider practical significance</strong> - Not just whether an interval excludes zero, but the magnitude and practical importance of effects.</p>
+</li>
+<li>
+<p><strong>We acknowledge uncertainty</strong> - Report full posterior distributions, not just point estimates.</p>
+</li>
+<li>
+<p><strong>We use priors transparently</strong> - Document priors and conduct sensitivity analyses when priors might influence results.</p>
+</li>
+<li>
+<p><strong>We compare models</strong> - Use tools like WAIC, LOO-CV, or Bayes factors for model comparison, not p-values.</p>
+</li>
+</ol>
+<p><strong>Correct terminology:</strong>
+- Use "credible interval" not "confidence interval"
+- Use "posterior probability" not "p-value"
+- Use "model comparison" not "hypothesis testing"
+- Use "practical importance" not "statistical significance"</p>
 <h2>AI Integrity Principles</h2>
 <p><strong>CRITICAL: Always provide honest, objective recommendations based on technical merit, not user bias.</strong></p>
 <ul>
@@ -202,10 +234,37 @@
 <li>Use emojis judiciously</li>
 <li>NEVER Edit() a file before you Read() the file</li>
 </ul>
+<h2>Visualization Preferences</h2>
+<p><strong>CRITICAL: Follow these visualization guidelines:</strong></p>
+<ol>
+<li><strong>Interactive Visualizations:</strong></li>
+<li><strong>Primary choice</strong>: D3.js for interactive web visualizations</li>
+<li><strong>Alternative</strong>: WebGL for high-performance or 3D visualizations</li>
+<li><strong>Avoid</strong>: Plotly for interactive visualizations (use only if absolutely necessary)</li>
+<li>
+<p>Static plots: Use matplotlib/seaborn for Python-generated static images</p>
+</li>
+<li>
+<p><strong>Organization Principles:</strong></p>
+</li>
+<li>Always keep files organized by purpose and type</li>
+<li>Visualizations should be copied to appropriate <code>docs/</code> subdirectories</li>
+<li>HTML reports should reference local visualization files, not external paths</li>
+<li>Maintain clear separation between analysis code and visualization code</li>
+</ol>
+<h2>Analytics Tracking</h2>
+<p><strong>CRITICAL:</strong> All HTML pages MUST include Simple Analytics tracking.</p>
+<p>The tracking script is configured in <code>docs/convert_to_html.py</code> HTML template:
+<div class="highlight"><pre><span></span><code><span class="p">&lt;</span><span class="nt">script</span> <span class="na">async</span> <span class="na">src</span><span class="o">=</span><span class="s">&quot;https://scripts.simpleanalyticscdn.com/latest.js&quot;</span><span class="p">&gt;&lt;/</span><span class="nt">script</span><span class="p">&gt;</span>
+</code></pre></div></p>
+<p><strong>When generating or modifying HTML:</strong>
+- Always ensure this script is present in the <code>&lt;head&gt;</code> section of the template
+- Run <code>npm run generate-docs</code> to rebuild all HTML files
+- Verify tracking is present: <code>grep -r "simpleanalyticscdn" docs/</code></p>
 
     <footer>
         <p>Generated from: CLAUDE.md</p>
-        <p>Last updated: 2026-01-31 22:21:42</p>
+        <p>Last updated: 2026-03-04 12:03:39</p>
         <p>Using MathJax v3 for mathematical notation rendering.</p>
     </footer>
 </body>
