@@ -544,12 +544,6 @@
                 <p><em>Four-panel comparison at noon (12:00): Left three panels show strength, aerobic, and spline components individually with 95% credible intervals. Right panel shows total prediction (sum of all components) overlaid with actual weight measurements (red dots) for model validation. Y-axis scaled to highlight temporal trends.</em></p>
             </div>
 
-            <h3>Component Contributions at Sample Dates</h3>
-            <div class="visualization">
-                <img src="../component_predictions/component_contributions_sample_dates_lbs.png" alt="Component contributions">
-                <p><em>Intraday weight patterns at 5 sample dates across the study period, showing strength, aerobic, and spline components. Each panel represents a different date to illustrate variation in component contributions over time. Y-axis scaled to reveal component-level variations.</em></p>
-            </div>
-
             <h3>Daily Patterns Analysis</h3>
             <div class="visualization">
                 <img src="../component_predictions/daily_patterns_analysis_lbs.png" alt="Daily patterns">
@@ -560,6 +554,18 @@
             <div class="visualization">
                 <img src="../component_predictions/total_predictions_heatmap_lbs.png" alt="Predictions heatmap">
                 <p><em>Heatmap showing total predicted weight values (intercept + strength + aerobic + spline) across all days (x-axis) and hours (y-axis). Red diverging colormap highlights deviations from mean weight. Red dots mark actual weight measurements. Year labels on x-axis aid temporal navigation.</em></p>
+            </div>
+
+            <h3>AR(1) Residual Structure</h3>
+            <div class="visualization">
+                <img src="../component_predictions/ar1_component_lbs.png" alt="AR(1) residual structure">
+                <p><em>Three-panel analysis of residual autocorrelation. Left: weight residuals (actual − structural prediction) over time, revealing the signal captured by the AR(1) component. Center: lag-1 scatter plot of consecutive residuals with OLS slope and posterior ρ annotated. Right: empirical autocorrelation function (ACF) compared to theoretical AR(1) decay (green dashed), with 95% white-noise confidence bounds (red dashed). The posterior ρ ≈ 0.29 indicates mild positive autocorrelation in measurement residuals.</em></p>
+            </div>
+
+            <h3>Exercise Impulse vs. Fitness State Contributions</h3>
+            <div class="visualization">
+                <img src="../component_predictions/fitness_impulse_vs_state_lbs.png" alt="Fitness impulse vs state">
+                <p><em>Four-panel comparison of raw exercise impulse and model-estimated fitness contributions for strength (top) and aerobic (bottom) components. Left panels show cumulative impulse (workout duration × average heart rate, orange bars) alongside the model's estimated weight contribution (blue line with 95% CI). Right panels show the scaled impulse (multiplied by the posterior β gain coefficient) compared to the model fitness state, revealing how the exponential decay kernel smooths and attenuates the instantaneous impulse signal over time. Divergence between the naive cumulative impulse and the decay-convolved state reflects the memory structure learned by the model.</em></p>
             </div>
         </div>
 
