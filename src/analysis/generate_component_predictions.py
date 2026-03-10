@@ -271,14 +271,14 @@ def save_component_predictions(components_lbs, date_range, pred_hours, output_di
 
         # Add each component in lbs
         for component_name, (mean, lower, upper) in components_lbs.items():
-            data[f'{component_name}_mean_lbs'] = mean[:, h_idx]
-            data[f'{component_name}_lower_lbs'] = lower[:, h_idx]
-            data[f'{component_name}_upper_lbs'] = upper[:, h_idx]
+            data[f'{component_name}_mean'] = mean[:, h_idx]
+            data[f'{component_name}_lower'] = lower[:, h_idx]
+            data[f'{component_name}_upper'] = upper[:, h_idx]
 
         df_hour = pd.DataFrame(data)
 
         # Save to CSV
-        csv_path = output_dir / f'component_predictions_hour_{hour_str}_lbs.csv'
+        csv_path = output_dir / f'component_predictions_hour_{hour_str}.csv'
         df_hour.to_csv(csv_path, index=False)
         print(f"  Saved hour {hour_str}: {csv_path}")
 
@@ -295,14 +295,14 @@ def save_component_predictions(components_lbs, date_range, pred_hours, output_di
 
             # Add component values in lbs
             for component_name, (mean, lower, upper) in components_lbs.items():
-                row[f'{component_name}_mean_lbs'] = mean[d_idx, h_idx]
-                row[f'{component_name}_lower_lbs'] = lower[d_idx, h_idx]
-                row[f'{component_name}_upper_lbs'] = upper[d_idx, h_idx]
+                row[f'{component_name}_mean'] = mean[d_idx, h_idx]
+                row[f'{component_name}_lower'] = lower[d_idx, h_idx]
+                row[f'{component_name}_upper'] = upper[d_idx, h_idx]
 
             all_data.append(row)
 
     df_all = pd.DataFrame(all_data)
-    csv_path = output_dir / 'all_component_predictions_lbs.csv'
+    csv_path = output_dir / 'all_component_predictions.csv'
     df_all.to_csv(csv_path, index=False)
     print(f"  Saved combined file: {csv_path}")
 
@@ -600,9 +600,9 @@ def create_prediction_summary(components_lbs, df_weight, date_range, pred_hours,
 
         f.write("\n## Data Files Generated\n\n")
         f.write("### CSV Files (lbs scale)\n")
-        f.write("1. **Per-hour files**: `component_predictions_hour_XX_lbs.csv` (XX = 00, 04, 08, 12, 16, 20, 24)\n")
-        f.write("   - Columns: date, hour, plus `{component}_mean_lbs`, `{component}_lower_lbs`, `{component}_upper_lbs`\n")
-        f.write("2. **Combined file**: `all_component_predictions_lbs.csv`\n")
+        f.write("1. **Per-hour files**: `component_predictions_hour_XX.csv` (XX = 00, 04, 08, 12, 16, 20, 24)\n")
+        f.write("   - Columns: date, hour, plus `{component}_mean`, `{component}_lower`, `{component}_upper`\n")
+        f.write("2. **Combined file**: `all_component_predictions.csv`\n")
         f.write("   - Long format with all hours and days\n")
         f.write("   - Additional columns: day_index, hour_index\n\n")
 
@@ -704,7 +704,7 @@ def main():
     components_lbs = convert_to_lbs(components_std, standardization_params)
 
     # Save predictions to CSV files (lbs scale)
-    output_dir = "docs/component_predictions_lbs"
+    output_dir = "docs/component_predictions"
     save_component_predictions(components_lbs, date_range, pred_hours, output_dir)
 
     # Create visualizations with actual weight data

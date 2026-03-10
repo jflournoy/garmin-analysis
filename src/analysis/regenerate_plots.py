@@ -28,25 +28,15 @@ plt.style.use('seaborn-v0_8-whitegrid')
 sns.set_palette("husl")
 
 
-def load_component_predictions(predictions_dir="docs/component_predictions", use_lbs=True):
-    """Load component predictions from CSV files."""
+def load_component_predictions(predictions_dir="docs/component_predictions"):
+    """Load component predictions from CSV files (always in lbs)."""
     print(f"Loading component predictions from {predictions_dir}/...")
 
     predictions_dir = Path(predictions_dir)
 
-    # Determine suffix based on scale
-    suffix = "_lbs" if use_lbs else ""
-
-    # Load the combined file
-    combined_path = predictions_dir / f"all_component_predictions{suffix}.csv"
+    combined_path = predictions_dir / "all_component_predictions.csv"
     if not combined_path.exists():
-        print(f"  ✗ Combined file not found: {combined_path}")
-        # Try without suffix as fallback
-        combined_path = predictions_dir / "all_component_predictions.csv"
-        if not combined_path.exists():
-            raise FileNotFoundError(f"Could not find component predictions in {predictions_dir}/")
-        print(f"  ✓ Using fallback file: {combined_path}")
-        suffix = ""  # Update suffix
+        raise FileNotFoundError(f"Could not find component predictions in {predictions_dir}/")
 
     df_all = pd.read_csv(combined_path)
     df_all['date'] = pd.to_datetime(df_all['date'])
@@ -55,10 +45,10 @@ def load_component_predictions(predictions_dir="docs/component_predictions", use
     print(f"  Date range: {df_all['date'].min().date()} to {df_all['date'].max().date()}")
     print(f"  Hours: {sorted(df_all['hour'].unique())}")
 
-    return df_all, suffix
+    return df_all
 
 
-def extract_components_from_dataframe(df_all, suffix=""):
+def extract_components_from_dataframe(df_all):
     """Extract component data from the combined dataframe."""
     print("\nExtracting component data...")
 
@@ -125,7 +115,7 @@ def load_activity_impulses(data_dir="data"):
 
 
 def create_component_visualizations(components, df_weight, dates, hours, output_dir,
-                                    suffix="", activity_impulses=None):
+                                    activity_impulses=None):
     """Create visualizations with proper data-driven scaling."""
     print(f"\nCreating visualizations with proper scaling...")
 
@@ -163,7 +153,7 @@ def create_component_visualizations(components, df_weight, dates, hours, output_
                     alpha=0.3, color='skyblue', label='95% CI')
     ax.plot(dates_np, mean[:, noon_idx], 'b-', linewidth=1.5, label='Strength fitness state')
     ax.set_xlabel('Date')
-    ax.set_ylabel('Contribution to weight (lbs)' if 'lbs' in suffix else 'Std contribution')
+    ax.set_ylabel('Contribution to weight (lbs)')
     ax.set_title('Strength Fitness Component')
     ax.grid(True, alpha=0.3)
 
@@ -196,7 +186,7 @@ def create_component_visualizations(components, df_weight, dates, hours, output_
                     alpha=0.3, color='lightgreen', label='95% CI')
     ax.plot(dates_np, mean[:, noon_idx], 'g-', linewidth=1.5, label='Aerobic fitness state')
     ax.set_xlabel('Date')
-    ax.set_ylabel('Contribution to weight (lbs)' if 'lbs' in suffix else 'Std contribution')
+    ax.set_ylabel('Contribution to weight (lbs)')
     ax.set_title('Aerobic Fitness Component')
     ax.grid(True, alpha=0.3)
 
@@ -231,7 +221,7 @@ def create_component_visualizations(components, df_weight, dates, hours, output_
     ax.plot(hours_np, mean_daily, 'o-', linewidth=2, markersize=4, color='darkorange',
             label='Mean daily pattern')
     ax.set_xlabel('Hour of day')
-    ax.set_ylabel('Contribution to weight (lbs)' if 'lbs' in suffix else 'Std contribution')
+    ax.set_ylabel('Contribution to weight (lbs)')
     ax.set_title('Daily Spline Component (Intraday Pattern)')
     ax.legend()
     ax.grid(True, alpha=0.3)
@@ -250,7 +240,7 @@ def create_component_visualizations(components, df_weight, dates, hours, output_
                    alpha=0.6, s=30, color='red', edgecolor='black', linewidth=0.5,
                    label='Actual weight (1–8 PM)')
     ax.set_xlabel('Date')
-    ax.set_ylabel('Weight (lbs)' if 'lbs' in suffix else 'Standardized weight')
+    ax.set_ylabel('Weight (lbs)')
     ax.set_title('Total Prediction (All Components)')
     ax.legend()
     ax.grid(True, alpha=0.3)
@@ -264,7 +254,7 @@ def create_component_visualizations(components, df_weight, dates, hours, output_
     plt.setp(ax.xaxis.get_majorticklabels(), rotation=45)
 
     plt.tight_layout()
-    output_filename = f'component_time_series_noon{suffix}.png'
+    output_filename = 'component_time_series_noon_lbs.png'
     plt.savefig(output_dir / output_filename, dpi=150, bbox_inches='tight')
     plt.close()
     print(f"  Saved: {output_dir}/{output_filename}")
@@ -300,13 +290,13 @@ def create_component_visualizations(components, df_weight, dates, hours, output_
     ax.set_xticklabels(date_labels)
 
     cbar = plt.colorbar(im, ax=ax)
-    cbar.set_label('Weight (lbs)' if 'lbs' in suffix else 'Standardized Weight')
+    cbar.set_label('Weight (lbs)')
 
     ax.xaxis.set_major_locator(plt.MaxNLocator(8))
     plt.setp(ax.xaxis.get_majorticklabels(), rotation=45)
 
     plt.tight_layout()
-    output_filename = f'total_predictions_heatmap{suffix}.png'
+    output_filename = 'total_predictions_heatmap_lbs.png'
     plt.savefig(output_dir / output_filename, dpi=150, bbox_inches='tight')
     plt.close()
     print(f"  Saved: {output_dir}/{output_filename}")
@@ -322,7 +312,7 @@ def create_component_visualizations(components, df_weight, dates, hours, output_
     ax.plot(hours_np, mean_spline_daily, 'o-', linewidth=3, markersize=6,
             color='orange', label='Spline Component')
     ax.set_xlabel('Hour of Day')
-    ax.set_ylabel('Weight (lbs)' if 'lbs' in suffix else 'Standardized Weight')
+    ax.set_ylabel('Weight (lbs)')
     ax.set_title('Mean Daily Spline Pattern')
     ax.legend()
     ax.grid(True, alpha=0.3)
@@ -352,7 +342,7 @@ def create_component_visualizations(components, df_weight, dates, hours, output_
                   alpha=0.3, s=20, color='red', label='Actual Weight')
 
     ax.set_xlabel('Hour of Day')
-    ax.set_ylabel('Weight (lbs)' if 'lbs' in suffix else 'Standardized Weight')
+    ax.set_ylabel('Weight (lbs)')
     ax.set_title(f'Daily Pattern Variability ({n_days_to_plot} sample days)')
     ax.legend()
     ax.grid(True, alpha=0.3)
@@ -374,7 +364,7 @@ def create_component_visualizations(components, df_weight, dates, hours, output_
     ax.set_ylim(y_min - y_padding, y_max + y_padding)
 
     plt.tight_layout()
-    output_filename = f'daily_patterns_analysis{suffix}.png'
+    output_filename = 'daily_patterns_analysis_lbs.png'
     plt.savefig(output_dir / output_filename, dpi=150, bbox_inches='tight')
     plt.close()
     print(f"  Saved: {output_dir}/{output_filename}")
@@ -408,8 +398,8 @@ def create_component_visualizations(components, df_weight, dates, hours, output_
         max_val = max(max(actual_weights), max(predicted_weights))
         ax.plot([min_val, max_val], [min_val, max_val], 'r--', alpha=0.5, label='Perfect Prediction')
 
-        ax.set_xlabel('Actual Weight (lbs)' if 'lbs' in suffix else 'Actual Weight (std)')
-        ax.set_ylabel('Predicted Weight (lbs)' if 'lbs' in suffix else 'Predicted Weight (std)')
+        ax.set_xlabel('Actual Weight (lbs)')
+        ax.set_ylabel('Predicted Weight (lbs)')
         ax.set_title('Prediction vs Actual Weight')
 
         # Add correlation coefficient
@@ -428,7 +418,7 @@ def create_component_visualizations(components, df_weight, dates, hours, output_
         ax.set_title('Prediction vs Actual Weight (No Data)')
 
     plt.tight_layout()
-    output_filename = f'prediction_vs_actual_scatter{suffix}.png'
+    output_filename = 'prediction_vs_actual_scatter_lbs.png'
     plt.savefig(output_dir / output_filename, dpi=150, bbox_inches='tight')
     plt.close()
     print(f"  Saved: {output_dir}/{output_filename}")
@@ -479,7 +469,7 @@ def create_component_visualizations(components, df_weight, dates, hours, output_
         ax.plot(resid_dates, resid_vals, 'o-', color='steelblue', linewidth=0.8,
                 markersize=4, alpha=0.7, label='Residual (actual − structural)')
         ax.set_xlabel('Date')
-        ax.set_ylabel('Residual (lbs)' if 'lbs' in suffix else 'Residual (std)')
+        ax.set_ylabel('Residual (lbs)')
         ax.set_title('Residuals from Structural Prediction\n(AR(1) signal)')
         ax.legend(fontsize=8)
         ax.grid(True, alpha=0.3)
@@ -548,7 +538,7 @@ def create_component_visualizations(components, df_weight, dates, hours, output_
         ax.set_ylim(-1.05, 1.05)
 
         plt.tight_layout()
-        output_filename = f'ar1_component{suffix}.png'
+        output_filename = 'ar1_component_lbs.png'
         plt.savefig(output_dir / output_filename, dpi=150, bbox_inches='tight')
         plt.close()
         print(f"  Saved: {output_dir}/{output_filename}")
@@ -562,9 +552,6 @@ def main():
     print("\nThis script reads existing predictions and regenerates plots")
     print("with proper y-axis scaling (data-driven, not including 0).")
     print("No model fitting is required.\n")
-
-    # Ask user which scale to use
-    use_lbs = True  # Default to lbs scale since that's what we're fixing
 
     # Load weight data
     print("Loading weight data...")
@@ -583,7 +570,7 @@ def main():
 
     # Load component predictions
     try:
-        df_all, suffix = load_component_predictions(use_lbs=use_lbs)
+        df_all = load_component_predictions()
     except FileNotFoundError as e:
         print(f"\n✗ Error: {e}")
         print("\nPlease run one of the component prediction scripts first:")
@@ -592,7 +579,7 @@ def main():
         return
 
     # Extract components from dataframe
-    components, dates, hours = extract_components_from_dataframe(df_all, suffix)
+    components, dates, hours = extract_components_from_dataframe(df_all)
 
     # Load activity impulse data for overlay on fitness component panels
     print("\nLoading activity impulse data...")
@@ -606,7 +593,7 @@ def main():
     output_dir = "docs/component_predictions"
 
     # Create visualizations with proper scaling
-    create_component_visualizations(components, df_weight, dates, hours, output_dir, suffix,
+    create_component_visualizations(components, df_weight, dates, hours, output_dir,
                                     activity_impulses=activity_impulses)
 
     print("\n" + "="*60)
@@ -614,7 +601,7 @@ def main():
     print("="*60)
     print(f"\nSummary:")
     print(f"  - Source: Existing predictions from docs/component_predictions/")
-    print(f"  - Scale: {'lbs' if 'lbs' in suffix else 'standardized'}")
+    print(f"  - Scale: lbs")
     print(f"  - Output directory: {output_dir}/")
     print(f"  - Files: 5 plots with proper data-driven scaling")
     print(f"\nKey improvements:")
