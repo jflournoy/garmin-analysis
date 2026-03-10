@@ -21,6 +21,7 @@ from datetime import datetime
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
 from src.data.weight import load_weight_data
+from src.data.workout import load_workout_data
 
 # Set plotting style
 plt.style.use('seaborn-v0_8-whitegrid')
@@ -96,7 +97,35 @@ def extract_components_from_dataframe(df_all, suffix=""):
     return components, dates, hours
 
 
-def create_component_visualizations(components, df_weight, dates, hours, output_dir, suffix=""):
+def load_activity_impulses(data_dir="data"):
+    """Load activity impulse data (duration_min * avg_hr) for strength and aerobic events."""
+    aerobic_types = ['cycling', 'treadmill_running', 'walking', 'indoor_cycling',
+                     'elliptical', 'indoor_cardio', 'e_bike_fitness', 'floor_climbing']
+
+    results = {}
+    for label, types in [('strength', ['strength_training']), ('aerobic', aerobic_types)]:
+        try:
+            df = load_workout_data(data_dir=data_dir, activity_type=types,
+                                   include_exercise_details=False)
+            if df.empty:
+                results[label] = pd.DataFrame(columns=['date', 'impulse'])
+                continue
+            # duration is in ms; convert to minutes
+            df = df.dropna(subset=['date', 'avg_hr', 'duration']).copy()
+            df['duration_min'] = df['duration'] / 60000.0
+            df['impulse'] = df['duration_min'] * df['avg_hr']
+            results[label] = df[['date', 'impulse']].copy()
+            print(f"  ✓ {label}: {len(df)} events, "
+                  f"impulse range {df['impulse'].min():.0f}–{df['impulse'].max():.0f}")
+        except Exception as e:
+            print(f"  ⚠ Could not load {label} activities: {e}")
+            results[label] = pd.DataFrame(columns=['date', 'impulse'])
+
+    return results
+
+
+def create_component_visualizations(components, df_weight, dates, hours, output_dir,
+                                    suffix="", activity_impulses=None):
     """Create visualizations with proper data-driven scaling."""
     print(f"\nCreating visualizations with proper scaling...")
 
@@ -110,76 +139,129 @@ def create_component_visualizations(components, df_weight, dates, hours, output_
     # Find noon index
     noon_idx = np.where(hours_np == 12.0)[0]
     if len(noon_idx) == 0:
-        # Find closest to 12
         noon_idx = np.argmin(np.abs(hours_np - 12.0))
     else:
         noon_idx = noon_idx[0]
 
-    # 1. Time series of each component at noon (12:00) with actual weight data
+    # Prepare afternoon weight data (for total panel)
+    if df_weight is not None:
+        afternoon_start = 13.0
+        afternoon_end = 20.0
+        df_weight_pm = df_weight[(df_weight['hour_of_day'] >= afternoon_start) &
+                                 (df_weight['hour_of_day'] <= afternoon_end)].copy()
+    else:
+        df_weight_pm = pd.DataFrame()
+
+    # 1. Fitness State Time Series with Predictions — four panels, different data per panel
     fig, axes = plt.subplots(2, 2, figsize=(16, 10))
     axes = axes.flatten()
 
-    component_names = ['strength', 'aerobic', 'spline', 'total']
-    titles = [
-        'Strength Fitness Component',
-        'Aerobic Fitness Component',
-        'Daily Spline Component',
-        'Total Prediction (All Components)'
-    ]
+    # Panel 0: Strength fitness component + strength training impulse events
+    ax = axes[0]
+    mean, lower, upper = components['strength']
+    ax.fill_between(dates_np, lower[:, noon_idx], upper[:, noon_idx],
+                    alpha=0.3, color='skyblue', label='95% CI')
+    ax.plot(dates_np, mean[:, noon_idx], 'b-', linewidth=1.5, label='Strength fitness state')
+    ax.set_xlabel('Date')
+    ax.set_ylabel('Contribution to weight (lbs)' if 'lbs' in suffix else 'Std contribution')
+    ax.set_title('Strength Fitness Component')
+    ax.grid(True, alpha=0.3)
 
-    # Prepare actual weight data - use typical measurement window (afternoon)
-    # Most weight measurements occur in afternoon/evening, use flexible window
-    if df_weight is not None:
-        # Use 1:00 PM - 8:00 PM window where most measurements occur
-        afternoon_start = 13.0  # 1:00 PM
-        afternoon_end = 20.0    # 8:00 PM
-        df_weight_noon = df_weight[(df_weight['hour_of_day'] >= afternoon_start) &
-                                   (df_weight['hour_of_day'] <= afternoon_end)].copy()
-        # Use existing timestamp (already properly formatted)
+    if activity_impulses and not activity_impulses['strength'].empty:
+        df_str = activity_impulses['strength']
+        # Secondary axis for impulse
+        ax2 = ax.twinx()
+        ax2.bar(df_str['date'], df_str['impulse'], width=1, alpha=0.35, color='orange',
+                label='Workout impulse\n(min×bpm)')
+        ax2.set_ylabel('Impulse (min × bpm)', color='orange')
+        ax2.tick_params(axis='y', labelcolor='orange')
+        # Combine legends
+        lines1, labels1 = ax.get_legend_handles_labels()
+        lines2, labels2 = ax2.get_legend_handles_labels()
+        ax.legend(lines1 + lines2, labels1 + labels2, loc='upper left', fontsize=8)
     else:
-        df_weight_noon = pd.DataFrame()  # Empty dataframe
-
-    for idx, (component_name, title) in enumerate(zip(component_names, titles)):
-        ax = axes[idx]
-        mean, lower, upper = components[component_name]
-
-        # Plot mean with credible interval
-        ax.fill_between(dates_np, lower[:, noon_idx], upper[:, noon_idx],
-                       alpha=0.3, color='skyblue', label='95% CI')
-        ax.plot(dates_np, mean[:, noon_idx], 'b-', linewidth=1.5, label='Mean Prediction')
-
-        # Add actual weight data (noon measurements)
-        if len(df_weight_noon) > 0:
-            ax.scatter(df_weight_noon['timestamp'], df_weight_noon['weight_lbs'],
-                      alpha=0.6, s=30, color='red', edgecolor='black', linewidth=0.5,
-                      label='Actual Weight (afternoon)')
-
-        ax.set_xlabel('Date')
-        ax.set_ylabel('Weight (lbs)' if 'lbs' in suffix else 'Standardized Weight')
-        ax.set_title(f'{title} (1-8 PM)')
         ax.legend()
-        ax.grid(True, alpha=0.3)
 
-        # Set y-axis limits based on data (not including 0)
-        all_y_data = np.concatenate([
-            mean[:, noon_idx],
-            lower[:, noon_idx],
-            upper[:, noon_idx]
-        ])
-        if len(df_weight_noon) > 0:
-            all_y_data = np.concatenate([all_y_data, df_weight_noon['weight_lbs'].values])
+    # Set y limits for fitness state axis
+    all_y = np.concatenate([mean[:, noon_idx], lower[:, noon_idx], upper[:, noon_idx]])
+    y_pad = (all_y.max() - all_y.min()) * 0.05
+    ax.set_ylim(all_y.min() - y_pad, all_y.max() + y_pad)
+    ax.xaxis.set_major_locator(plt.MaxNLocator(6))
+    plt.setp(ax.xaxis.get_majorticklabels(), rotation=45)
 
-        # Calculate data range with 5% padding
-        y_min = np.min(all_y_data)
-        y_max = np.max(all_y_data)
-        y_range = y_max - y_min
-        y_padding = y_range * 0.05  # 5% padding
+    # Panel 1: Aerobic fitness component + aerobic impulse events
+    ax = axes[1]
+    mean, lower, upper = components['aerobic']
+    ax.fill_between(dates_np, lower[:, noon_idx], upper[:, noon_idx],
+                    alpha=0.3, color='lightgreen', label='95% CI')
+    ax.plot(dates_np, mean[:, noon_idx], 'g-', linewidth=1.5, label='Aerobic fitness state')
+    ax.set_xlabel('Date')
+    ax.set_ylabel('Contribution to weight (lbs)' if 'lbs' in suffix else 'Std contribution')
+    ax.set_title('Aerobic Fitness Component')
+    ax.grid(True, alpha=0.3)
 
-        ax.set_ylim(y_min - y_padding, y_max + y_padding)
+    if activity_impulses and not activity_impulses['aerobic'].empty:
+        df_aer = activity_impulses['aerobic']
+        ax2 = ax.twinx()
+        ax2.bar(df_aer['date'], df_aer['impulse'], width=1, alpha=0.35, color='purple',
+                label='Workout impulse\n(min×bpm)')
+        ax2.set_ylabel('Impulse (min × bpm)', color='purple')
+        ax2.tick_params(axis='y', labelcolor='purple')
+        lines1, labels1 = ax.get_legend_handles_labels()
+        lines2, labels2 = ax2.get_legend_handles_labels()
+        ax.legend(lines1 + lines2, labels1 + labels2, loc='upper left', fontsize=8)
+    else:
+        ax.legend()
 
-        # Format x-axis
-        ax.xaxis.set_major_locator(plt.MaxNLocator(6))
-        plt.setp(ax.xaxis.get_majorticklabels(), rotation=45)
+    all_y = np.concatenate([mean[:, noon_idx], lower[:, noon_idx], upper[:, noon_idx]])
+    y_pad = (all_y.max() - all_y.min()) * 0.05
+    ax.set_ylim(all_y.min() - y_pad, all_y.max() + y_pad)
+    ax.xaxis.set_major_locator(plt.MaxNLocator(6))
+    plt.setp(ax.xaxis.get_majorticklabels(), rotation=45)
+
+    # Panel 2: Daily spline component — averaged intraday pattern (hour of day)
+    ax = axes[2]
+    mean_spline, lower_spline, upper_spline = components['spline']
+    # Average over all days to get the typical daily pattern
+    mean_daily = mean_spline.mean(axis=0)
+    lower_daily = lower_spline.mean(axis=0)
+    upper_daily = upper_spline.mean(axis=0)
+    ax.fill_between(hours_np, lower_daily, upper_daily,
+                    alpha=0.3, color='orange', label='95% CI (mean)')
+    ax.plot(hours_np, mean_daily, 'o-', linewidth=2, markersize=4, color='darkorange',
+            label='Mean daily pattern')
+    ax.set_xlabel('Hour of day')
+    ax.set_ylabel('Contribution to weight (lbs)' if 'lbs' in suffix else 'Std contribution')
+    ax.set_title('Daily Spline Component (Intraday Pattern)')
+    ax.legend()
+    ax.grid(True, alpha=0.3)
+    all_y = np.concatenate([mean_daily, lower_daily, upper_daily])
+    y_pad = (all_y.max() - all_y.min()) * 0.05
+    ax.set_ylim(all_y.min() - y_pad, all_y.max() + y_pad)
+
+    # Panel 3: Total prediction + actual weight measurements
+    ax = axes[3]
+    mean_total, lower_total, upper_total = components['total']
+    ax.fill_between(dates_np, lower_total[:, noon_idx], upper_total[:, noon_idx],
+                    alpha=0.3, color='skyblue', label='95% CI')
+    ax.plot(dates_np, mean_total[:, noon_idx], 'b-', linewidth=1.5, label='Total prediction (1 PM)')
+    if len(df_weight_pm) > 0:
+        ax.scatter(df_weight_pm['timestamp'], df_weight_pm['weight_lbs'],
+                   alpha=0.6, s=30, color='red', edgecolor='black', linewidth=0.5,
+                   label='Actual weight (1–8 PM)')
+    ax.set_xlabel('Date')
+    ax.set_ylabel('Weight (lbs)' if 'lbs' in suffix else 'Standardized weight')
+    ax.set_title('Total Prediction (All Components)')
+    ax.legend()
+    ax.grid(True, alpha=0.3)
+    all_y = np.concatenate([mean_total[:, noon_idx], lower_total[:, noon_idx],
+                            upper_total[:, noon_idx]])
+    if len(df_weight_pm) > 0:
+        all_y = np.concatenate([all_y, df_weight_pm['weight_lbs'].values])
+    y_pad = (all_y.max() - all_y.min()) * 0.05
+    ax.set_ylim(all_y.min() - y_pad, all_y.max() + y_pad)
+    ax.xaxis.set_major_locator(plt.MaxNLocator(6))
+    plt.setp(ax.xaxis.get_majorticklabels(), rotation=45)
 
     plt.tight_layout()
     output_filename = f'component_time_series_noon{suffix}.png'
@@ -229,75 +311,7 @@ def create_component_visualizations(components, df_weight, dates, hours, output_
     plt.close()
     print(f"  Saved: {output_dir}/{output_filename}")
 
-    # 3. Component contributions at sample dates
-    sample_indices = [0, len(dates)//4, len(dates)//2, 3*len(dates)//4, -1]
-    sample_dates = dates_np[sample_indices]
-
-    fig, axes = plt.subplots(2, 3, figsize=(18, 10))
-    axes = axes.flatten()
-
-    for idx, (sample_date, date_idx) in enumerate(zip(sample_dates, sample_indices)):
-        if idx >= len(axes):
-            break
-
-        ax = axes[idx]
-
-        # Get component values at this date
-        components_at_date = {}
-        for component_name in ['intercept', 'strength', 'aerobic', 'spline', 'total']:
-            mean, _, _ = components[component_name]
-            components_at_date[component_name] = mean[date_idx, :]
-
-        # Plot line plot (strength, aerobic, spline - no intercept)
-        for component_name, color, label in [
-            ('strength', 'blue', 'Strength'),
-            ('aerobic', 'green', 'Aerobic'),
-            ('spline', 'orange', 'Spline')
-        ]:
-            values = components_at_date[component_name]
-            ax.plot(hours_np, values, 'o-', linewidth=2, markersize=4, label=label, color=color)
-
-        # Add actual weight measurements for this date
-        df_date_weights = df_weight[df_weight['date'] == pd.Timestamp(sample_date).date()]
-        if len(df_date_weights) > 0:
-            ax.scatter(df_date_weights['hour_of_day'], df_date_weights['weight_lbs'],
-                      s=40, color='red', edgecolor='black', linewidth=1,
-                      label='Actual Weight', zorder=5)
-
-        ax.set_xlabel('Hour of Day')
-        ax.set_ylabel('Weight (lbs)' if 'lbs' in suffix else 'Standardized Weight')
-        ax.set_title(f'Components at {pd.Timestamp(sample_date).date()}')
-        ax.legend()
-        ax.grid(True, alpha=0.3)
-
-        # Set y-axis limits based on data
-        all_y_data = []
-        for component_name in ['intercept', 'strength', 'aerobic', 'spline', 'total']:
-            all_y_data.append(components_at_date[component_name])
-
-        if len(df_date_weights) > 0:
-            all_y_data.append(df_date_weights['weight_lbs'].values)
-
-        all_y_data_flat = np.concatenate([d.flatten() for d in all_y_data])
-
-        y_min = np.min(all_y_data_flat)
-        y_max = np.max(all_y_data_flat)
-        y_range = y_max - y_min
-        y_padding = y_range * 0.05
-
-        ax.set_ylim(y_min - y_padding, y_max + y_padding)
-
-    # Remove empty subplots
-    for idx in range(len(sample_dates), len(axes)):
-        fig.delaxes(axes[idx])
-
-    plt.tight_layout()
-    output_filename = f'component_contributions_sample_dates{suffix}.png'
-    plt.savefig(output_dir / output_filename, dpi=150, bbox_inches='tight')
-    plt.close()
-    print(f"  Saved: {output_dir}/{output_filename}")
-
-    # 4. Daily patterns analysis
+    # 3. Daily patterns analysis
     fig, axes = plt.subplots(1, 2, figsize=(14, 6))
 
     # Left: Spline-only daily pattern
@@ -419,6 +433,126 @@ def create_component_visualizations(components, df_weight, dates, hours, output_
     plt.close()
     print(f"  Saved: {output_dir}/{output_filename}")
 
+    # 5. AR(1) component visualization
+    # The AR(1) process models temporal autocorrelation in the residuals at measurement times.
+    # We visualize this by computing residuals (actual - structural prediction) and showing
+    # their temporal structure.
+    if df_weight is not None and len(df_weight) > 0:
+        # Compute residuals: actual weight - total structural prediction (no AR)
+        df_resid = df_weight.sort_values('timestamp').copy()
+        resid_vals = []
+        resid_dates = []
+
+        for _, row in df_resid.iterrows():
+            date_diffs = np.abs(dates_np - pd.Timestamp(row['date']).to_datetime64())
+            d_idx = np.argmin(date_diffs)
+            h_idx = np.argmin(np.abs(hours_np - row['hour_of_day']))
+            structural_pred = mean_total[d_idx, h_idx]
+            resid = row['weight_lbs'] - structural_pred
+            resid_vals.append(resid)
+            resid_dates.append(row['timestamp'])
+
+        resid_vals = np.array(resid_vals)
+        resid_dates = np.array(resid_dates)
+
+        # Load rho / sigma_epsilon posteriors if available
+        meta_path = Path(output_dir) / 'posterior_metadata.json'
+        rho_mean = rho_lower = rho_upper = None
+        sig_eps_mean = None
+        if meta_path.exists():
+            import json
+            with open(meta_path) as f:
+                meta = json.load(f)
+            post = meta.get('posterior', {})
+            if 'rho' in post:
+                rho_mean = post['rho']['mean']
+                rho_lower = post['rho'].get('lower_ci')
+                rho_upper = post['rho'].get('upper_ci')
+            if 'sigma_epsilon' in post:
+                sig_eps_mean = post['sigma_epsilon']['mean']
+
+        fig, axes = plt.subplots(1, 3, figsize=(18, 6))
+
+        # Panel A: residuals over time
+        ax = axes[0]
+        ax.axhline(0, color='gray', linewidth=0.8, linestyle='--')
+        ax.plot(resid_dates, resid_vals, 'o-', color='steelblue', linewidth=0.8,
+                markersize=4, alpha=0.7, label='Residual (actual − structural)')
+        ax.set_xlabel('Date')
+        ax.set_ylabel('Residual (lbs)' if 'lbs' in suffix else 'Residual (std)')
+        ax.set_title('Residuals from Structural Prediction\n(AR(1) signal)')
+        ax.legend(fontsize=8)
+        ax.grid(True, alpha=0.3)
+        r_pad = np.abs(resid_vals).max() * 1.1
+        ax.set_ylim(-r_pad, r_pad)
+        ax.xaxis.set_major_locator(plt.MaxNLocator(6))
+        plt.setp(ax.xaxis.get_majorticklabels(), rotation=45)
+
+        # Panel B: lag-1 scatter (consecutive residuals)
+        ax = axes[1]
+        if len(resid_vals) > 1:
+            ax.scatter(resid_vals[:-1], resid_vals[1:], alpha=0.6, s=30, color='steelblue',
+                       edgecolor='navy', linewidth=0.4)
+            # Fit a line for visual reference
+            lag1_corr = np.corrcoef(resid_vals[:-1], resid_vals[1:])[0, 1]
+            xr = np.array([resid_vals.min(), resid_vals.max()])
+            # Simple OLS slope through origin
+            slope_ols = np.sum(resid_vals[:-1] * resid_vals[1:]) / np.sum(resid_vals[:-1] ** 2)
+            ax.plot(xr, slope_ols * xr, 'r-', linewidth=1.5,
+                    label=f'OLS slope = {slope_ols:.2f}')
+            ax.axhline(0, color='gray', linewidth=0.5, linestyle='--')
+            ax.axvline(0, color='gray', linewidth=0.5, linestyle='--')
+            # Annotate with posterior rho
+            note = f'Empirical lag-1 r = {lag1_corr:.2f}'
+            if rho_mean is not None:
+                note += f'\nPosterior ρ = {rho_mean:.2f} [{rho_lower:.2f}, {rho_upper:.2f}]'
+            ax.text(0.05, 0.95, note, transform=ax.transAxes, fontsize=9,
+                    verticalalignment='top',
+                    bbox=dict(boxstyle='round', facecolor='wheat', alpha=0.7))
+        ax.set_xlabel('Residual at time t')
+        ax.set_ylabel('Residual at time t+1')
+        ax.set_title('Lag-1 Autocorrelation of Residuals\n(AR(1) ρ structure)')
+        ax.legend(fontsize=8)
+        ax.grid(True, alpha=0.3)
+
+        # Panel C: ACF of residuals
+        ax = axes[2]
+        max_lag = min(20, len(resid_vals) - 1)
+        lags = np.arange(0, max_lag + 1)
+        acf_vals = [1.0]  # lag 0
+        for lag in range(1, max_lag + 1):
+            if len(resid_vals) > lag:
+                r = np.corrcoef(resid_vals[:-lag], resid_vals[lag:])[0, 1]
+                acf_vals.append(r)
+            else:
+                acf_vals.append(np.nan)
+        acf_vals = np.array(acf_vals)
+
+        ax.bar(lags, acf_vals, color='steelblue', alpha=0.7, width=0.5)
+        # 95% confidence bound for white noise: ±1.96/sqrt(n)
+        ci_bound = 1.96 / np.sqrt(len(resid_vals))
+        ax.axhline(ci_bound, color='red', linestyle='--', linewidth=1,
+                   label=f'95% CI (white noise): ±{ci_bound:.2f}')
+        ax.axhline(-ci_bound, color='red', linestyle='--', linewidth=1)
+        ax.axhline(0, color='black', linewidth=0.8)
+        if rho_mean is not None:
+            # Overlay theoretical AR(1) ACF: rho^lag
+            theoretical_acf = np.array([rho_mean ** lag for lag in lags])
+            ax.plot(lags, theoretical_acf, 'g--', linewidth=1.5,
+                    label=f'AR(1) theory (ρ={rho_mean:.2f})')
+        ax.set_xlabel('Lag (measurement intervals)')
+        ax.set_ylabel('Autocorrelation')
+        ax.set_title('ACF of Residuals\nvs theoretical AR(1)')
+        ax.legend(fontsize=8)
+        ax.grid(True, alpha=0.3)
+        ax.set_ylim(-1.05, 1.05)
+
+        plt.tight_layout()
+        output_filename = f'ar1_component{suffix}.png'
+        plt.savefig(output_dir / output_filename, dpi=150, bbox_inches='tight')
+        plt.close()
+        print(f"  Saved: {output_dir}/{output_filename}")
+
 
 def main():
     """Main function to regenerate plots with proper scaling."""
@@ -460,11 +594,20 @@ def main():
     # Extract components from dataframe
     components, dates, hours = extract_components_from_dataframe(df_all, suffix)
 
+    # Load activity impulse data for overlay on fitness component panels
+    print("\nLoading activity impulse data...")
+    try:
+        activity_impulses = load_activity_impulses(data_dir)
+    except Exception as e:
+        print(f"  ⚠ Warning: Could not load activity impulses ({e})")
+        activity_impulses = None
+
     # Create output directory
     output_dir = "docs/component_predictions"
 
     # Create visualizations with proper scaling
-    create_component_visualizations(components, df_weight, dates, hours, output_dir, suffix)
+    create_component_visualizations(components, df_weight, dates, hours, output_dir, suffix,
+                                    activity_impulses=activity_impulses)
 
     print("\n" + "="*60)
     print("Plot Regeneration Complete")
@@ -475,11 +618,11 @@ def main():
     print(f"  - Output directory: {output_dir}/")
     print(f"  - Files: 5 plots with proper data-driven scaling")
     print(f"\nKey improvements:")
-    print(f"  1. Y-axis scaled to data range (not including 0)")
-    print(f"  2. 5% padding around data for visual clarity")
-    print(f"  3. No model refitting required")
-    print(f"\nTo regenerate plots with different scaling, modify the script")
-    print(f"or run the appropriate component prediction script.")
+    print(f"  1. Strength/aerobic panels show activity impulse events (dur×HR)")
+    print(f"  2. Spline panel shows intraday hour-of-day pattern (not time series)")
+    print(f"  3. Component Contributions at Sample Dates removed")
+    print(f"  4. AR(1) component shown via residual time series, lag-1 scatter, and ACF")
+    print(f"  5. Y-axis scaled to data range with 5% padding")
 
 
 if __name__ == "__main__":
