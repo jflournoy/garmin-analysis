@@ -544,16 +544,19 @@ def create_component_visualizations(components, df_weight, dates, hours, output_
         print(f"  Saved: {output_dir}/{output_filename}")
 
 
-def create_fitness_impulse_viz(components, dates, hours, output_dir, activity_impulses=None):
+def create_fitness_impulse_viz(components, dates, hours, output_dir, activity_impulses=None,
+                               data_dir="data"):
     """Four-panel: raw impulse bars vs. model fitness state contribution (strength & aerobic).
 
     Top row = strength, bottom row = aerobic.
-    Left col: raw impulse bars + model fitness contribution (γ * state) over time.
-    Right col: scaled impulse (decay-convolved with posterior parameters) vs. model fitness state.
-    The right panel reveals how the leaky-integrator decay kernel transforms bursty impulse
-    signals into smooth fitness states, and whether the impulse alone predicts the state.
+    Left col: raw intensity bars (z-scored, matching Stan input) + model fitness contribution.
+    Right col: decay-convolved z-scored intensity vs. model fitness state.
+    The right panel reveals how the leaky-integrator decay kernel transforms bursty intensity
+    signals into smooth fitness states. The simulated state uses the same z-scored intensity
+    and posterior-mean parameters as the Stan model, so scales are directly comparable.
     """
     import json
+    from src.data.intensity import load_intensity_by_activity
 
     output_dir = Path(output_dir)
     dates_np = np.array(dates)
@@ -574,34 +577,43 @@ def create_fitness_impulse_viz(components, dates, hours, output_dir, activity_im
             if key in post:
                 params[key] = post[key]['mean']
 
-    # Build a daily impulse array aligned to model dates
-    def build_daily_impulse(impulse_df, date_array):
-        """Return impulse array aligned to date_array (0 on days with no workout)."""
-        imp = np.zeros(len(date_array))
-        if impulse_df is None or impulse_df.empty:
-            return imp
-        dates_pd = pd.to_datetime(date_array)
-        for _, row in impulse_df.iterrows():
-            ev_date = pd.to_datetime(row['date'])
-            diffs = np.abs((dates_pd - ev_date).total_seconds())
-            idx = np.argmin(diffs)
-            imp[idx] += row['impulse']
-        return imp
+    # Load and z-score intensity exactly as the Stan model does
+    # This ensures simulated fitness states are in the same units as model components
+    try:
+        df_intensity = load_intensity_by_activity(
+            data_dir=data_dir,
+            activity_types=['strength_training', 'walking', 'cycling']
+        )
+        # Align to model dates
+        dates_pd = pd.to_datetime(dates_np)
+        df_dates = pd.DataFrame({'date': dates_pd})
+        df_merged = df_dates.merge(df_intensity, on='date', how='left').fillna(0)
 
-    # Reconstruct fitness state via forward simulation with posterior-mean parameters
-    def simulate_fitness_state(impulse_arr, alpha_d, alpha_m, beta, gamma,
-                               trained_days=None):
-        """Simulate γ*fitness[t] using posterior-mean decay parameters.
+        strength_raw = df_merged['strength_training'].values
+        aerobic_raw = (df_merged['walking'] + df_merged['cycling']).values
 
-        trained_days: boolean array, True on days where impulse > 0.
-        """
-        n = len(impulse_arr)
-        if trained_days is None:
-            trained_days = impulse_arr > 0
+        # Z-score using whole-series mean/std (matching run_constrained_ar_model.py)
+        s_mean, s_std = strength_raw.mean(), strength_raw.std()
+        a_mean, a_std = aerobic_raw.mean(), aerobic_raw.std()
+        strength_z = (strength_raw - s_mean) / s_std if s_std > 0 else strength_raw
+        aerobic_z  = (aerobic_raw - a_mean) / a_std  if a_std > 0 else aerobic_raw
+
+        intensity_arrays = {'strength': strength_z, 'aerobic': aerobic_z}
+        print("  ✓ Loaded z-scored intensity for fitness simulation")
+    except Exception as e:
+        print(f"  ⚠ Could not load intensity data ({e}); falling back to raw impulse")
+        intensity_arrays = {}
+
+    # Reconstruct fitness state via forward simulation with posterior-mean parameters.
+    # Input intensity_arr should be z-scored (same units as Stan model input).
+    # Output is γ * fitness in the same units as comp_noon (lbs weight contribution).
+    def simulate_fitness_state(intensity_arr, alpha_d, alpha_m, beta, gamma):
+        trained = intensity_arr > 0
+        n = len(intensity_arr)
         state = np.zeros(n)
         for t in range(1, n):
-            alpha_eff = alpha_d + (1 - alpha_d) * alpha_m * float(trained_days[t - 1])
-            state[t] = alpha_eff * state[t - 1] + beta * impulse_arr[t - 1] * float(trained_days[t - 1])
+            alpha_eff = alpha_d + (1 - alpha_d) * alpha_m * float(trained[t - 1])
+            state[t] = alpha_eff * state[t - 1] + beta * intensity_arr[t - 1] * float(trained[t - 1])
         return gamma * state
 
     fig, axes = plt.subplots(2, 2, figsize=(18, 10))
@@ -620,35 +632,34 @@ def create_fitness_impulse_viz(components, dates, hours, output_dir, activity_im
         lower_noon = lower_comp[:, noon_idx]
         upper_noon = upper_comp[:, noon_idx]
 
-        # Daily impulse array
-        imp_df = activity_impulses.get(label) if activity_impulses else None
-        imp_arr = build_daily_impulse(imp_df, dates_np)
-        trained = imp_arr > 0
+        # Z-scored intensity (same units as Stan model input)
+        intensity_z = intensity_arrays.get(label, np.zeros(len(dates_np)))
 
         # Posterior-mean simulated fitness contribution
         alpha_d = params.get(ad_k, 0.9)
         alpha_m = params.get(am_k, 0.5)
         beta    = params.get(b_k, 0.5)
         gamma   = params.get(g_k, 0.1)
-        simulated = simulate_fitness_state(imp_arr, alpha_d, alpha_m, beta, gamma, trained)
+        simulated = simulate_fitness_state(intensity_z, alpha_d, alpha_m, beta, gamma)
 
-        # ------ LEFT: impulse bars + model fitness contribution ------
+        # ------ LEFT: z-scored intensity bars + model fitness contribution ------
         ax = axes[row_i, 0]
         ax2 = ax.twinx()
 
-        # Impulse bars on secondary axis
-        ax2.bar(dates_np, imp_arr, width=1, alpha=0.35, color=imp_color,
-                label='Workout impulse (min×bpm)')
-        ax2.set_ylabel('Impulse (min × bpm)', color=imp_color, fontsize=9)
+        # Positive intensity bars on secondary axis (clip negatives from z-scoring)
+        intensity_pos = np.clip(intensity_z, 0, None)
+        ax2.bar(dates_np, intensity_pos, width=1, alpha=0.35, color=imp_color,
+                label='Intensity (z-scored, positive days)')
+        ax2.set_ylabel('Intensity (z-score)', color=imp_color, fontsize=9)
         ax2.tick_params(axis='y', labelcolor=imp_color)
 
         # Model fitness state on primary axis
         ax.fill_between(dates_np, lower_noon, upper_noon, alpha=0.25, color=state_color)
         ax.plot(dates_np, comp_noon, color=state_color, linewidth=1.5,
-                label=f'Model γ·fitness (lbs)')
+                label='Model γ·fitness (lbs)')
         ax.set_ylabel('Weight contribution (lbs)', color=state_color, fontsize=9)
         ax.tick_params(axis='y', labelcolor=state_color)
-        ax.set_title(f'{label.capitalize()} — Impulse vs. Model State', fontsize=10)
+        ax.set_title(f'{label.capitalize()} — Intensity vs. Model State', fontsize=10)
         ax.set_xlabel('Date')
         ax.xaxis.set_major_locator(plt.MaxNLocator(6))
         plt.setp(ax.xaxis.get_majorticklabels(), rotation=45)
@@ -662,10 +673,10 @@ def create_fitness_impulse_viz(components, dates, hours, output_dir, activity_im
         ax.fill_between(dates_np, lower_noon, upper_noon, alpha=0.2, color=state_color,
                         label='Model 95% CI')
         ax.plot(dates_np, comp_noon, color=state_color, linewidth=2,
-                label=f'Model γ·fitness')
+                label='Model γ·fitness')
         ax.plot(dates_np, simulated, color=imp_color, linewidth=1.5, linestyle='--',
-                label=f'Simulated (β·decay·impulse, posterior params)')
-        ax.set_title(f'{label.capitalize()} — Model vs. Decay-Convolved Impulse', fontsize=10)
+                label='Simulated γ·β·decay(z-intensity)')
+        ax.set_title(f'{label.capitalize()} — Model vs. Simulated State', fontsize=10)
         ax.set_ylabel('Weight contribution (lbs)', fontsize=9)
         ax.set_xlabel('Date')
         ax.xaxis.set_major_locator(plt.MaxNLocator(6))
@@ -679,7 +690,7 @@ def create_fitness_impulse_viz(components, dates, hours, output_dir, activity_im
                 ha='right', va='bottom',
                 bbox=dict(boxstyle='round', facecolor='lightyellow', alpha=0.8))
 
-        # Set shared y limits for left panel too
+        # Y limits: right panel spans both model and simulated; left panel spans model only
         all_y = np.concatenate([comp_noon, lower_noon, upper_noon, simulated])
         y_pad = (all_y.max() - all_y.min()) * 0.08
         axes[row_i, 1].set_ylim(all_y.min() - y_pad, all_y.max() + y_pad)
@@ -750,7 +761,7 @@ def main():
 
     # Create fitness impulse vs. state visualization
     create_fitness_impulse_viz(components, dates, hours, output_dir,
-                               activity_impulses=activity_impulses)
+                               activity_impulses=activity_impulses, data_dir=data_dir)
 
     print("\n" + "="*60)
     print("Plot Regeneration Complete")

@@ -565,7 +565,7 @@
             <h3>Exercise Impulse vs. Fitness State Contributions</h3>
             <div class="visualization">
                 <img src="../component_predictions/fitness_impulse_vs_state_lbs.png" alt="Fitness impulse vs state">
-                <p><em>Four-panel comparison of raw exercise impulse and model-estimated fitness contributions for strength (top) and aerobic (bottom) components. Left panels show cumulative impulse (workout duration × average heart rate, orange bars) alongside the model's estimated weight contribution (blue line with 95% CI). Right panels show the scaled impulse (multiplied by the posterior β gain coefficient) compared to the model fitness state, revealing how the exponential decay kernel smooths and attenuates the instantaneous impulse signal over time. Divergence between the naive cumulative impulse and the decay-convolved state reflects the memory structure learned by the model.</em></p>
+                <p><em>Four-panel comparison of exercise intensity and model-estimated fitness contributions for strength (top) and aerobic (bottom) components. Left panels show daily z-scored intensity (same units fed to the Stan model, orange bars) alongside the model's estimated weight contribution (blue/green line with 95% CI). Right panels compare the model fitness state to a simulated state computed by forward-propagating the z-scored intensity through the posterior-mean decay kernel (γ·β·decay); because both use identical units, divergence between the lines reflects genuine differences between the model posterior and a naively parameterized convolution.</em></p>
             </div>
         </div>
 
