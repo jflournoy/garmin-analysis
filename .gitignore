@@ -13,6 +13,11 @@
 # Model outputs
 output/
 
+# Experimental output directories (generated analysis artifacts)
+docs/component_predictions_lbs/
+docs/constrained_ar_analysis/
+docs/enhanced_*/
+
 # Stan compiled models
 *.hpp
 stan/**/*.hpp
