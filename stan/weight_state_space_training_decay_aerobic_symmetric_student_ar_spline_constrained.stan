@@ -2,9 +2,9 @@
  * State-space model with training-dependent decay for STRENGTH and AEROBIC fitness.
  * WITH INTERCEPT TERM in weight model.
  * SYMMETRIC PRIORS VERSION - same priors for strength and aerobic effects.
- * STUDENT-T LIKELIHOOD for robust regression + HEAVILY CONSTRAINED AR(1) CORRELATION.
+ * STUDENT-T LIKELIHOOD for robust regression + CONSTRAINED AR(1) CORRELATION.
  * DAILY SPLINE for intraday weight variations (Fourier basis).
- * HEAVILY CONSTRAINED AR(1) to prevent overfitting.
+ * CONSTRAINED AR(1) with moderately regularizing prior (rho in [-0.7, 0.7], prior N(0,0.3)).
  * GENERATES PREDICTIONS FOR ALL DAYS.
  *
  * Two independent fitness states:
@@ -20,7 +20,7 @@
  *   weight[t] ~ student_t(nu, mu[t], sigma_w)
  *   mu[t] = weight_intercept + gamma_s * strength_fitness[day(t)] +
  *           gamma_a * aerobic_fitness[day(t)] + f_daily[t] + epsilon[t]
- *   epsilon[t] ~ normal(rho * epsilon[t-1], sigma_epsilon)  # HEAVILY CONSTRAINED AR(1)
+ *   epsilon[t] ~ normal(rho * epsilon[t-1], sigma_epsilon)  # CONSTRAINED AR(1)
  *
  * Daily spline using Fourier basis:
  *   f_daily[t] = Σ_k [a_sin[k] * sin(2πk * hour_scaled[t]) + a_cos[k] * cos(2πk * hour_scaled[t])]
@@ -93,8 +93,8 @@ parameters {
   // Student-t degrees of freedom (must be > 2 for finite variance)
   real<lower=2> nu;                   // degrees of freedom for Student-t
 
-  // HEAVILY CONSTRAINED AR(1) process parameters
-  real<lower=-0.5, upper=0.5> rho;    // autocorrelation coefficient - SMALL RANGE!
+  // Constrained AR(1) process parameters
+  real<lower=-0.7, upper=0.7> rho;    // autocorrelation coefficient
   real<lower=0> sigma_epsilon;        // innovation standard deviation
 
   // AR(1) innovations
@@ -212,13 +212,12 @@ model {
   // Exponential(0.1) gives mean=10, encourages moderate heaviness
   nu ~ exponential(0.1);
 
-  // HEAVILY CONSTRAINED PRIOR for AR(1) coefficient
-  // Normal centered at 0 with very small variance
-  // Constrained to [-0.5, 0.5] in parameter declaration
-  rho ~ normal(0, 0.1);                   // VERY STRONG PRIOR - small autocorrelation
+  // Moderately regularizing prior for AR(1) coefficient
+  // Constrained to [-0.7, 0.7] in parameter declaration
+  rho ~ normal(0, 0.3);                   // Allows meaningful autocorrelation
 
-  // HEAVILY CONSTRAINED PRIOR for AR(1) innovation scale - VERY small values
-  sigma_epsilon ~ exponential(10);        // mean=0.1 - VERY SMALL!
+  // Regularizing prior for AR(1) innovation scale
+  sigma_epsilon ~ exponential(10);        // mean=0.1
 
   // Prior for AR(1) innovations
   epsilon_raw ~ std_normal();
