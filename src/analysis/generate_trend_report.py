@@ -115,7 +115,6 @@ def generate_html_report(metadata, data_summary_stats=None):
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Trend Model Variant: Interpretability Report</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
-    <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
     <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
     <style>
         body {{
