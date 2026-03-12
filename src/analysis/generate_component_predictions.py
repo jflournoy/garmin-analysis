@@ -109,21 +109,26 @@ def prepare_data_with_4h_intervals():
 
 def run_constrained_model(stan_data):
     """Run the constrained AR(1) model."""
-    print("\nRunning constrained AR(1) model for predictions...")
-
     model_path = "stan/weight_state_space_training_decay_aerobic_symmetric_student_ar_spline_constrained.stan"
 
+    print("\n" + "=" * 60)
+    print("MODEL FITTING: Constrained AR(1) Spline Model (for predictions)")
+    print("=" * 60)
+    print(f"  Stan file: {model_path}")
+    print(f"  Key constraints:")
+    print(f"    rho ∈ [-0.7, 0.7], prior: normal(0, 0.3)")
+    print(f"    sigma_epsilon prior: exponential(10)")
+    print(f"  Data: D={stan_data['D']} days, N={stan_data['N_weight']} weight obs, K={stan_data['K']} harmonics, H={stan_data['H']} pred hours")
+
+    print(f"\nCompiling model...")
     try:
         model = cmdstanpy.CmdStanModel(stan_file=model_path)
-        print(f"✓ Model compiled successfully")
+        print(f"  ✓ Model compiled: {model.exe_file}")
     except Exception as e:
-        print(f"✗ Model compilation failed: {e}")
+        print(f"  ✗ Model compilation failed: {e}")
         return None
 
-    # Run sampling with conservative settings
-    print("Running MCMC sampling...")
-    fit = model.sample(
-        data=stan_data,
+    sampling_config = dict(
         chains=4,
         parallel_chains=4,
         iter_warmup=500,
@@ -131,10 +136,20 @@ def run_constrained_model(stan_data):
         seed=12345,
         adapt_delta=0.95,
         max_treedepth=12,
-        show_console=False,
-        show_progress=True
+    )
+    print(f"\nStarting MCMC sampling...")
+    for k, v in sampling_config.items():
+        print(f"  {k}: {v}")
+
+    fit = model.sample(
+        data=stan_data,
+        show_console=True,
+        show_progress=True,
+        **sampling_config,
     )
 
+    print(f"\n  ✓ Sampling complete")
+    print(f"  Output files: {fit.runset.csv_files}")
     return fit
 
 

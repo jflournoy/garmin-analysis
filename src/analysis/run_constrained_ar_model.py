@@ -103,21 +103,26 @@ def prepare_test_data():
 
 def run_constrained_model(stan_data):
     """Run the heavily constrained AR(1) model."""
-    print("\nRunning heavily constrained AR(1) model...")
-
     model_path = "stan/weight_state_space_training_decay_aerobic_symmetric_student_ar_spline_constrained.stan"
 
+    print("\n" + "=" * 60)
+    print("MODEL FITTING: Constrained AR(1) Spline Model")
+    print("=" * 60)
+    print(f"  Stan file: {model_path}")
+    print(f"  Key constraints:")
+    print(f"    rho ∈ [-0.7, 0.7], prior: normal(0, 0.3)")
+    print(f"    sigma_epsilon prior: exponential(10)")
+    print(f"  Data: D={stan_data['D']} days, N={stan_data['N_weight']} weight obs, K={stan_data['K']} harmonics, H={stan_data['H']} pred hours")
+
+    print(f"\nCompiling model...")
     try:
         model = cmdstanpy.CmdStanModel(stan_file=model_path)
-        print(f"✓ Model compiled successfully")
+        print(f"  ✓ Model compiled: {model.exe_file}")
     except Exception as e:
-        print(f"✗ Model compilation failed: {e}")
+        print(f"  ✗ Model compilation failed: {e}")
         return None
 
-    # Run sampling with conservative settings
-    print("Running MCMC sampling...")
-    fit = model.sample(
-        data=stan_data,
+    sampling_config = dict(
         chains=4,
         parallel_chains=4,
         iter_warmup=500,
@@ -125,10 +130,20 @@ def run_constrained_model(stan_data):
         seed=12345,
         adapt_delta=0.95,
         max_treedepth=12,
-        show_console=False,
-        show_progress=True
+    )
+    print(f"\nStarting MCMC sampling...")
+    for k, v in sampling_config.items():
+        print(f"  {k}: {v}")
+
+    fit = model.sample(
+        data=stan_data,
+        show_console=True,
+        show_progress=True,
+        **sampling_config,
     )
 
+    print(f"\n  ✓ Sampling complete")
+    print(f"  Output files: {fit.runset.csv_files}")
     return fit
 
 
@@ -169,9 +184,9 @@ def compare_with_previous(fit_constrained, fit_previous=None):
 
     # Check if constraints are working
     print(f"\nConstraint Checks:")
-    print(f"  ρ range: [{np.min(rho_constrained):.3f}, {np.max(rho_constrained):.3f}] (should be within [-0.5, 0.5])")
+    print(f"  ρ range: [{np.min(rho_constrained):.3f}, {np.max(rho_constrained):.3f}] (should be within [-0.7, 0.7])")
 
-    if np.max(rho_constrained) > 0.5 or np.min(rho_constrained) < -0.5:
+    if np.max(rho_constrained) > 0.7 or np.min(rho_constrained) < -0.7:
         print("  ⚠️ WARNING: ρ outside expected range!")
     else:
         print("  ✓ ρ within constrained range")
@@ -330,10 +345,10 @@ def create_constrained_summary(fit, variance_results, output_dir):
         f.write("# Heavily Constrained AR(1) Model Analysis Summary\n\n")
         f.write(f"Generated: {pd.Timestamp.now().strftime('%Y-%m-%d %H:%M:%S')}\n\n")
 
-        f.write("## Heavy Constraints Applied\n\n")
-        f.write("1. **ρ constrained to [-0.5, 0.5]** in parameter declaration\n")
-        f.write("2. **Strong prior on ρ**: `normal(0, 0.1)` (centered at 0, small variance)\n")
-        f.write("3. **Very strong prior on σ_ε**: `exponential(10)` (mean=0.1, very small)\n")
+        f.write("## Constraints Applied\n\n")
+        f.write("1. **ρ constrained to [-0.7, 0.7]** in parameter declaration\n")
+        f.write("2. **Moderately regularizing prior on ρ**: `normal(0, 0.3)` (centered at 0)\n")
+        f.write("3. **Regularizing prior on σ_ε**: `exponential(10)` (mean=0.1)\n")
         f.write("4. **No local shrinkage parameters** - single σ_ε for all observations\n\n")
 
         f.write("## AR(1) Parameter Results\n\n")

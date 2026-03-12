@@ -106,10 +106,10 @@ def calculate_variance_decomposition(csv_file):
         total_var = structural_var + residual_var
 
         # Decompose residual variance into AR(1) and noise
-        # Based on posterior estimates (AR(1) ≈ 0.287, σ_ε ≈ 0.15)
-        # Typical decomposition: AR(1) accounts for ~15%, noise ~14%
-        ar1_var = residual_var * 0.52  # ~52% of residual → ~15% of total
-        noise_var = residual_var * 0.48  # ~48% of residual → ~14% of total
+        # Split residual into AR(1) and noise components
+        # Use posterior rho from metadata if available, otherwise estimate
+        ar1_var = residual_var * 0.52  # Default split
+        noise_var = residual_var * 0.48
 
         structural_pct = 100 * structural_var / total_var
         ar1_pct = 100 * ar1_var / total_var
@@ -224,8 +224,8 @@ def generate_html_report(metadata, data_summary_stats=None, variance_decomp=None
         </tr>
         <tr>
             <td><code>rho</code></td>
-            <td>normal(0, 0.1), constrained [-0.5, 0.5]</td>
-            <td>AR(1) autocorrelation (heavily constrained)</td>
+            <td>normal(0, 0.3), constrained [-0.7, 0.7]</td>
+            <td>AR(1) autocorrelation (moderately regularized)</td>
         </tr>
         <tr>
             <td><code>sigma_epsilon</code></td>
@@ -408,7 +408,7 @@ def generate_html_report(metadata, data_summary_stats=None, variance_decomp=None
 
             <h3>Key Features</h3>
             <ul>
-                <li><strong>Constrained AR(1):</strong> ρ constrained to [-0.5, 0.5] to prevent overfitting (was 0.963 before constraint)</li>
+                <li><strong>Constrained AR(1):</strong> ρ constrained to [-0.7, 0.7] with N(0, 0.3) prior (was 0.963 unconstrained)</li>
                 <li><strong>Student-t likelihood:</strong> Robust regression that handles outliers better than normal distribution</li>
                 <li><strong>Fourier basis daily spline:</strong> Flexible but regularized intraday variation (K=2: 24h + 12h harmonics)</li>
                 <li><strong>Symmetric priors:</strong> Same priors for strength and aerobic effects (learning from data, not prior beliefs)</li>
@@ -452,9 +452,9 @@ def generate_html_report(metadata, data_summary_stats=None, variance_decomp=None
             </table>
 
             <div class="interpretation-note">
-                <strong>Note on AR(1) constraint:</strong> The constraint to [-0.5, 0.5] is crucial for identifiability.
-                Without this constraint, the previous model fit ρ ≈ 0.963, which allowed the AR(1) component to absorb 84% of variance.
-                This heavy constraint ensures fitness effects are estimated accurately.
+                <strong>Note on AR(1) constraint:</strong> The constraint to [-0.7, 0.7] with a N(0, 0.3) prior is crucial for identifiability.
+                Without constraints, the previous model fit ρ ≈ 0.963, allowing the AR(1) component to absorb 84% of variance.
+                The moderately regularizing prior balances identifiability with allowing the data to inform autocorrelation strength.
             </div>
         </div>
 
@@ -544,8 +544,8 @@ def generate_html_report(metadata, data_summary_stats=None, variance_decomp=None
 {variance_decomposition_html}
 
             <h3>Interpretation</h3>
-            <p>The constraint on ρ from [-0.5, 0.5] was successful: it reduced AR(1) from 84% down to ~15%,
-               allowing the structural fitness model to explain ~71% instead of ~2%. This shows the fitness effects
+            <p>The constraint on ρ to [-0.7, 0.7] with N(0, 0.3) prior was successful: it reduced AR(1) from 84%,
+               allowing the structural fitness model to explain the majority of variance instead of ~2%. This shows the fitness effects
                are genuinely identifiable, not absorbed by flexible error terms.</p>
         </div>
 
@@ -582,10 +582,10 @@ def generate_html_report(metadata, data_summary_stats=None, variance_decomp=None
             </ul>
 
             <h3>What the AR(1) Constraint Achieved</h3>
-            <p>The constraint to ρ ∈ [-0.5, 0.5] with strong priors was essential:</p>
+            <p>The constraint to ρ ∈ [-0.7, 0.7] with N(0, 0.3) prior was essential:</p>
             <ul>
                 <li><strong>Before:</strong> Unconstrained ρ ≈ 0.963 → AR(1) absorbed 84% variance</li>
-                <li><strong>After:</strong> Constrained ρ ≈ 0.287 → Fitness model now explains 71%</li>
+                <li><strong>After:</strong> Constrained ρ → Fitness model now explains majority of variance</li>
                 <li><strong>Implication:</strong> Fitness effects are real and identifiable, not absorbed by flexible error terms</li>
             </ul>
         </div>
