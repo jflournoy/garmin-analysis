@@ -623,6 +623,18 @@ def generate_html_report(metadata, data_summary_stats=None, variance_decomp=None
                 <img src="../component_predictions/total_predictions_heatmap_lbs.png" alt="Predictions heatmap">
                 <p><em>Heatmap showing total predicted weight values (intercept + strength + aerobic + spline) across all days (x-axis) and hours (y-axis). Red diverging colormap highlights deviations from mean weight. Red dots mark actual weight measurements. Year labels on x-axis aid temporal navigation.</em></p>
             </div>
+
+            <h3>AR(1) Residual Structure</h3>
+            <div class="visualization">
+                <img src="../component_predictions/ar1_component_lbs.png" alt="AR(1) residual structure">
+                <p><em>Three-panel analysis of residual autocorrelation. Left: weight residuals (actual − structural prediction) over time, revealing the signal captured by the AR(1) component. Center: lag-1 scatter plot of consecutive residuals with OLS slope and posterior ρ annotated. Right: empirical autocorrelation function (ACF) compared to theoretical AR(1) decay (green dashed), with 95% white-noise confidence bounds (red dashed).</em></p>
+            </div>
+
+            <h3>Exercise Impulse vs. Fitness State Contributions</h3>
+            <div class="visualization">
+                <img src="../component_predictions/fitness_impulse_vs_state_lbs.png" alt="Fitness impulse vs state">
+                <p><em>Four-panel comparison of exercise intensity and model-estimated fitness contributions for strength (top) and aerobic (bottom) components. Left panels show daily z-scored intensity (same units fed to the Stan model, orange bars) alongside the model's estimated weight contribution (blue/green line with 95% CI). Right panels compare the model fitness state to a simulated state computed by forward-propagating the z-scored intensity through the posterior-mean decay kernel.</em></p>
+            </div>
         </div>
 
         <!-- Limitations -->
